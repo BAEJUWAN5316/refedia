@@ -1,0 +1,619 @@
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, Response
+from sqlalchemy import or_, String
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import requests
+from sqlalchemy.orm import Session, joinedload
+from typing import List, Optional
+import uuid
+import base64
+import os
+from datetime import timedelta, datetime
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+from database import engine, get_db, Base
+from db_models import User, Category, Post as DBPost
+from models import (
+    UserCreate, UserLogin, UserResponse, UserApprove, UserMakeAdmin, UserRevokeAdmin,
+    PasswordVerify, Token,
+    CategoryCreate, CategoryResponse,
+    PostCreate, PostUpdate, PostResponse,
+)
+from auth import (
+    hash_employee_id, verify_employee_id, create_access_token,
+    get_current_user, get_current_approved_user, get_current_admin_user,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
+from youtube_service import extract_youtube_metadata, extract_frames, validate_youtube_url
+from security_logger import log_login_attempt, log_security_event
+
+# 데이터베이스 테이블 생성
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Refedia API", version="1.0.0")
+
+# Rate Limiter 설정
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS 설정 (환경 변수 사용)
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:5173,https://www.cloudno7.co.kr"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Global Error: {error_msg}")
+        with open("global_error.log", "a") as f:
+            f.write(f"Time: {datetime.now()}\n")
+            f.write(f"Path: {request.url.path}\n")
+            f.write(f"Error: {str(e)}\n")
+            f.write(f"Traceback:\n{error_msg}\n")
+            f.write("-" * 50 + "\n")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error", "error": str(e)}
+        )
+
+# HTTPS 강제 리다이렉트 (프로덕션만)
+@app.middleware("http")
+async def https_redirect_middleware(request: Request, call_next):
+    if os.getenv("ENVIRONMENT") == "production":
+        if request.headers.get("x-forwarded-proto") == "http":
+            url = str(request.url).replace("http://", "https://", 1)
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url, status_code=301)
+    return await call_next(request)
+
+# ========================================
+# Health Check
+# ========================================
+
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "Refedia API is running"}
+
+# ... (omitted for brevity, will use multi_replace or targeted replace if needed, but here I am replacing the middleware section and the end of file)
+
+# Actually, I should do this in chunks to be safe.
+# First, remove middleware.
+
+
+# ========================================
+# Authentication API
+# ========================================
+
+@app.post("/api/auth/signup", response_model=UserResponse)
+def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+    """회원가입"""
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    # 사번 중복 확인
+    all_users = db.query(User).all()
+    for user in all_users:
+        if verify_employee_id(user_data.employee_id, user.employee_id_hash):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Employee ID already registered")
+    hashed_employee_id = hash_employee_id(user_data.employee_id)
+    new_user = User(
+        email=user_data.email,
+        name=user_data.name,
+        employee_id_hash=hashed_employee_id,
+        is_approved=False,  # 관리자 승인 필요
+        is_admin=False,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+@app.post("/api/auth/login", response_model=Token)
+@limiter.limit("5/minute")  # 무차별 로그인 시도 방지
+def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
+    """로그인 (사번 사용)"""
+    client_ip = request.client.host if request.client else "unknown"
+    user = db.query(User).filter(User.email == credentials.email).first()
+    
+    if not user:
+        log_login_attempt(credentials.email, False, client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or employee ID")
+    
+    if not verify_employee_id(credentials.employee_id, user.employee_id_hash):
+        log_login_attempt(credentials.email, False, client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or employee ID")
+    
+    if not user.is_approved:
+        log_login_attempt(credentials.email, False, client_ip)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not approved by admin")
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    
+    log_login_attempt(credentials.email, True, client_ip)
+    return {"access_token": access_token, "token_type": "bearer", "user": user}
+
+@app.post("/api/auth/verify-password")
+def verify_password(data: PasswordVerify, current_user: User = Depends(get_current_user)):
+    """비밀번호(사번) 재확인"""
+    if not verify_employee_id(data.employee_id, current_user.employee_id_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid employee ID")
+    return {"status": "verified"}
+
+@app.post("/api/auth/logout")
+def logout(request: Request, current_user: User = Depends(get_current_user)):
+    """로그아웃 (Session-based, 클라이언트에서 sessionStorage 삭제)"""
+    client_ip = request.client.host if request.client else "unknown"
+    log_security_event("LOGOUT", f"User {current_user.email}", client_ip)
+    return {"status": "logged out", "message": "Please clear your session storage"}
+
+@app.get("/api/auth/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """현재 사용자 정보"""
+    return current_user
+
+@app.get("/api/admin/users", response_model=List[UserResponse])
+def get_all_users(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """모든 사용자 조회 (관리자 전용)"""
+    return db.query(User).all()
+
+@app.put("/api/admin/users/{user_id}/approve")
+def approve_user(user_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """사용자 승인 (관리자 전용)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_approved = True
+    db.commit()
+    return {"status": "approved", "user_id": user.id}
+
+@app.put("/api/admin/users/{user_id}/make-admin")
+def make_admin(user_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """관리자 지정 (관리자 전용)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_admin = True
+    user.is_approved = True
+    db.commit()
+    return {"status": "admin_granted", "user_id": user.id}
+
+@app.put("/api/admin/users/{user_id}/revoke-admin")
+def revoke_admin(user_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """관리자 권한 회수 (관리자 전용)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot revoke your own admin privileges")
+    user.is_admin = False
+    db.commit()
+    return {"status": "admin_revoked", "user_id": user.id}
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_user(user_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """사용자 계정 삭제 (관리자 전용)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    db.delete(user)
+    db.commit()
+    return {"status": "deleted", "user_id": user_id}
+
+# ========================================
+# Category API
+# ========================================
+
+@app.get("/api/categories")
+def get_categories(db: Session = Depends(get_db)):
+    """카테고리 목록 (primary/secondary 그룹화)"""
+    categories = db.query(Category).all()
+    primary = [{"id": c.id, "name": c.name} for c in categories if c.type == "primary"]
+    secondary = [{"id": c.id, "name": c.name} for c in categories if c.type == "secondary"]
+    return {"primary": primary, "secondary": secondary}
+
+@app.post("/api/categories", response_model=CategoryResponse)
+def create_category(category_data: CategoryCreate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """카테고리 생성 (관리자 전용)"""
+    existing = db.query(Category).filter(Category.name == category_data.name).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category name already exists")
+    category_id = str(uuid.uuid4())
+    new_category = Category(id=category_id, name=category_data.name, type=category_data.type)
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    return new_category
+
+@app.delete("/api/categories/{category_id}")
+def delete_category(category_id: str, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """카테고리 삭제 (관리자 전용)"""
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db.delete(category)
+    db.commit()
+    return {"status": "deleted", "category_id": category_id}
+
+
+
+# ========================================
+# YouTube API
+# ========================================
+
+@app.get("/api/youtube/frames")
+@limiter.limit("10/minute")  # YouTube API 과도한 호출 방지
+def get_youtube_frames(
+    request: Request,
+    url: str = Query(...), 
+    count: int = Query(4), 
+    current_user: User = Depends(get_current_approved_user)
+):
+    """YouTube 랜덤 프레임 추출 (Base64)"""
+    if not validate_youtube_url(url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Invalid YouTube URL"
+        )
+    frames = extract_frames(url, count)
+    if not frames:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Failed to extract frames"
+        )
+    return {"frames": frames, "count": len(frames)}
+
+
+
+# ========================================
+# Category API (Duplicate - keeping second definition)
+# ========================================
+
+# ========================================
+# Category API
+# ========================================
+
+@app.get("/api/categories")
+def get_categories(db: Session = Depends(get_db)):
+    """카테고리 목록 (primary/secondary 그룹화)"""
+    categories = db.query(Category).all()
+    
+    primary = [{"id": c.id, "name": c.name} for c in categories if c.type == "primary"]
+    secondary = [{"id": c.id, "name": c.name} for c in categories if c.type == "secondary"]
+    
+    return {"primary": primary, "secondary": secondary}
+
+
+@app.post("/api/categories", response_model=CategoryResponse)
+def create_category(
+    category_data: CategoryCreate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """카테고리 생성 (관리자 전용)"""
+    # 이름 중복 확인
+    existing = db.query(Category).filter(Category.name == category_data.name).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category name already exists"
+        )
+    
+    # UUID 생성
+    category_id = str(uuid.uuid4())
+    
+    new_category = Category(
+        id=category_id,
+        name=category_data.name,
+        type=category_data.type
+    )
+    
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    
+    return new_category
+
+
+@app.delete("/api/categories/{category_id}")
+def delete_category(
+    category_id: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """카테고리 삭제 (관리자 전용)"""
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    db.delete(category)
+    db.commit()
+    
+    return {"status": "deleted", "category_id": category_id}
+
+
+# ========================================
+# Post API
+# ========================================
+
+@app.post("/api/posts", response_model=PostResponse)
+def create_post(
+    post_data: PostCreate,
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """게시물 생성"""
+    try:
+        print("DEBUG: INSIDE CREATE_POST - START")
+        # HttpUrl 객체를 문자열로 변환
+        url_str = str(post_data.url)
+        
+        # URL 유효성 검사
+        if not validate_youtube_url(url_str):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid YouTube URL"
+            )
+        
+        # URL 중복 확인
+        existing = db.query(DBPost).filter(DBPost.url == url_str).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Post with this URL already exists"
+            )
+        
+        # YouTube 메타데이터 추출
+        title, thumbnail, video_type = extract_youtube_metadata(url_str)
+        
+        # 게시물 생성
+        new_post = DBPost(
+            url=url_str,
+            title=title,
+            thumbnail=thumbnail,
+            platform="youtube",
+            video_type=video_type,
+            primary_categories=post_data.primary_categories,
+            secondary_categories=post_data.secondary_categories,
+            memo=post_data.memo,
+            user_id=current_user.id
+        )
+        
+        db.add(new_post)
+        db.commit()
+        db.refresh(new_post)
+        
+        return new_post
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Create post failed: {error_msg}")
+        with open("error_log.txt", "a") as f:
+            f.write(f"Create Post Error time: {datetime.now()}\n")
+            f.write(f"Error: {str(e)}\n")
+            f.write(f"Traceback:\n{error_msg}\n")
+            f.write("-" * 50 + "\n")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create post: {str(e)}"
+        )
+
+
+@app.get("/api/posts", response_model=List[PostResponse])
+def get_posts(
+    skip: int = 0,
+    limit: int = 100,
+    primary_category: List[str] = Query(None),
+    secondary_category: List[str] = Query(None),
+    video_type: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """게시물 목록 조회 (필터링 포함)"""
+    query = db.query(DBPost)
+    
+    # Primary Category Filter (OR logic for multiple)
+    if primary_category:
+        conditions = []
+        for cat_id in primary_category:
+            # JSON 배열 내에 cat_id가 포함되어 있는지 확인 (SQLite/PostgreSQL 호환성 주의)
+            # 여기서는 간단히 문자열 포함 여부로 체크하거나, 실제로는 DB 특화 함수 필요할 수 있음
+            # 하지만 현재 구조상 JSON 타입이므로, Python 측에서 필터링하거나 DB 함수 사용
+            # SQLite에서는 JSON_EXTRACT 등을 사용해야 함.
+            # 여기서는 간단하게 구현:
+            pass 
+            # SQLAlchemy의 JSON 타입 필터링은 DB마다 다름.
+            # SQLite의 경우:
+            # query = query.filter(Post.primary_categories.contains(cat_id)) # PostgreSQL
+            # SQLite는 contains 지원이 제한적일 수 있음.
+            
+        # 임시: Python 레벨 필터링은 비효율적이므로, DB 레벨에서 처리해야 함.
+        # 하지만 지금은 복잡한 쿼리 대신, 모든 포스트를 가져와서 필터링하는 방식은 데이터가 많으면 느림.
+        # 일단 기존 로직을 복원 (기존 로직이 어땠는지 기억해야 함)
+        # 기존에는 단일 카테고리 필터였음. 다중 필터로 변경됨.
+        pass
+
+    # 검색 필터
+    if search:
+        query = query.filter(or_(DBPost.title.contains(search), DBPost.memo.contains(search)))
+    
+    if video_type:
+        query = query.filter(DBPost.video_type == video_type)
+        
+    # 정렬
+    posts = query.options(joinedload(DBPost.author)).order_by(DBPost.created_at.desc()).all()
+    
+    # 메모리 내 필터링 (JSON 배열 필터링의 복잡성 회피)
+    if primary_category:
+        posts = [p for p in posts if any(c in p.primary_categories for c in primary_category)]
+        
+    if secondary_category:
+        posts = [p for p in posts if any(c in p.secondary_categories for c in secondary_category)]
+    
+    # 작성자 이름 명시적으로 설정
+    for post in posts:
+        if post.author:
+            post.author_name = post.author.name
+        
+    return posts
+
+
+@app.get("/api/posts/{post_id}", response_model=PostResponse)
+def get_post(post_id: int, db: Session = Depends(get_db)):
+    """게시물 상세 조회"""
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # 작성자 이름 설정
+    if post.author:
+        post.author_name = post.author.name
+        
+    return post
+
+
+@app.put("/api/posts/{post_id}")
+def update_post(
+    post_id: int,
+    post_data: PostUpdate,
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """게시물 수정"""
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # 권한 확인: 관리자이거나 작성자 본인
+    if not current_user.is_admin and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this post")
+    
+    try:
+        # 업데이트
+        if post_data.title is not None:
+            post.title = post_data.title
+        if post_data.primary_categories is not None:
+            post.primary_categories = post_data.primary_categories
+        if post_data.secondary_categories is not None:
+            post.secondary_categories = post_data.secondary_categories
+        if post_data.memo is not None:
+            post.memo = post_data.memo
+        
+        db.commit()
+        db.refresh(post)
+        
+        return post
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Update post failed: {error_msg}")
+        with open("error_log.txt", "a") as f:
+            f.write(f"Error time: {datetime.now()}\n")
+            f.write(f"Error: {str(e)}\n")
+            f.write(f"Traceback:\n{error_msg}\n")
+            f.write("-" * 50 + "\n")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update post: {str(e)}"
+        )
+
+
+@app.delete("/api/posts/{post_id}")
+def delete_post(
+    post_id: int,
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """게시물 삭제"""
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # 권한 확인: 관리자이거나 작성자 본인
+    if not current_user.is_admin and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this post")
+    
+    db.delete(post)
+    db.commit()
+    
+    return {"status": "deleted", "post_id": post_id}
+
+
+# Image Download Proxy
+# ========================================
+
+# 허용된 이미지 도메인 (SSRF 방지)
+ALLOWED_IMAGE_DOMAINS = [
+    "i.ytimg.com",
+    "img.youtube.com",
+    "i9.ytimg.com"
+]
+
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+
+@app.get("/api/download/image")
+async def download_image(url: str = Query(...)):
+    """외부 이미지 프록시 다운로드 (CORS 우회 + SSRF 방지)"""
+    import httpx
+    
+    # 도메인 검증
+    if not any(domain in url for domain in ALLOWED_IMAGE_DOMAINS):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Invalid image source. Only YouTube images are allowed."
+        )
+    
+    # 내부 IP 차단 (SSRF 방지)
+    blocked_patterns = ["localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.", "172."]
+    if any(blocked in url.lower() for blocked in blocked_patterns):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Access to internal resources is forbidden"
+        )
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            
+            # 크기 검증
+            if len(response.content) > MAX_IMAGE_SIZE:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Image too large (max 10MB)"
+                )
+            
+            return JSONResponse(
+                content={"data": base64.b64encode(response.content).decode('utf-8')}, 
+                media_type="application/json"
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Failed to download image: {str(e)}"
+        )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
