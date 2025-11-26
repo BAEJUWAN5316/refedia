@@ -27,7 +27,7 @@ export default function Header({
                     {currentUser ? (
                         <div className="user-menu">
                             <button className="btn btn-primary" onClick={onCreateClick}>
-                                ➕ New Reference
+                                + New Reference
                             </button>
 
                             {currentUser.is_admin && (

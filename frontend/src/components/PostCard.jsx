@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 
-export default function PostCard({ post, onClick, getCategoryName }) {
+const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
     return (
-        <div className="post-card" onClick={onClick}>
+        <div className="post-card" onClick={onClick} ref={ref}>
             <div className="thumbnail-container">
                 <img
                     src={post.thumbnail}
@@ -38,4 +38,6 @@ export default function PostCard({ post, onClick, getCategoryName }) {
             </div>
         </div>
     );
-}
+});
+
+export default PostCard;

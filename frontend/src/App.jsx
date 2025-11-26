@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
 import PostCard from './components/PostCard';
@@ -34,6 +34,11 @@ function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observer = useRef();
+
   // Initial Auth Check
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,23 +57,67 @@ function App() {
   // Fetch Data only when authenticated
   useEffect(() => {
     if (currentUser) {
-      fetchPosts();
       fetchCategories();
     }
   }, [currentUser]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async (pageNum) => {
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/posts`);
+      const params = new URLSearchParams({
+        page: pageNum,
+        limit: 20,
+        filter_logic: filterLogic,
+        video_type: selectedVideoType !== 'all' ? selectedVideoType : '',
+        search: searchQuery
+      });
+
+      selectedPrimary.forEach(id => params.append('primary_category', id));
+      selectedSecondary.forEach(id => params.append('secondary_category', id));
+
+      const response = await fetch(`${API_URL}/api/posts?${params.toString()}`);
       const data = await response.json();
-      setPosts(data);
+
+      if (pageNum === 1) {
+        setPosts(data);
+      } else {
+        setPosts(prev => [...prev, ...data]);
+      }
+      setHasMore(data.length === 20);
     } catch (error) {
       console.error('Failed to fetch posts:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery]);
+
+  // Filter Change Effect
+  useEffect(() => {
+    if (currentUser) {
+      setPage(1);
+      fetchPosts(1);
+    }
+  }, [fetchPosts]);
+
+  // Page Change Effect
+  useEffect(() => {
+    if (currentUser && page > 1) {
+      fetchPosts(page);
+    }
+  }, [page, fetchPosts, currentUser]);
+
+  // Infinite Scroll Ref
+  const lastPostElementRef = useCallback(node => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [loading, hasMore]);
 
   const fetchCategories = async () => {
     try {
@@ -98,54 +147,7 @@ function App() {
     setShowLogin(true); // Show login modal immediately after logout
   };
 
-  const filteredPosts = posts.filter(post => {
-    // 1. Video Type Filter
-    const matchesVideoType = selectedVideoType === 'all' || post.video_type === selectedVideoType;
 
-    // 2. Search Filter
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.description && post.description.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    // 3. Category Filter
-    let matchesCategory = true;
-
-    // Helper to check if post has ANY of the selected categories (OR logic base for single group)
-    // But user wants AND logic across multiple selections if configured.
-
-    const postPrimary = post.primary_categories || [];
-    const postSecondary = post.secondary_categories || [];
-
-    // Combine selected categories for easier logic if we treat them as a single pool, 
-    // BUT user asked to separate them. Let's check requirements: "Separate Primary and Secondary... Multi-select... AND logic".
-    // Usually AND logic means: Post must have Primary A AND Primary B (if both selected).
-    // OR logic means: Post must have Primary A OR Primary B.
-
-    // Primary Filter
-    let matchesPrimary = true;
-    if (selectedPrimary.length > 0) {
-      if (filterLogic === 'AND') {
-        // Post must have ALL selected primary categories
-        matchesPrimary = selectedPrimary.every(id => postPrimary.includes(id));
-      } else {
-        // Post must have AT LEAST ONE selected primary category
-        matchesPrimary = selectedPrimary.some(id => postPrimary.includes(id));
-      }
-    }
-
-    // Secondary Filter
-    let matchesSecondary = true;
-    if (selectedSecondary.length > 0) {
-      if (filterLogic === 'AND') {
-        matchesSecondary = selectedSecondary.every(id => postSecondary.includes(id));
-      } else {
-        matchesSecondary = selectedSecondary.some(id => postSecondary.includes(id));
-      }
-    }
-
-    matchesCategory = matchesPrimary && matchesSecondary;
-
-    return matchesCategory && matchesVideoType && matchesSearch;
-  });
 
   const getCategoryName = (id, type) => {
     const list = type === 'primary' ? categories.primary : categories.secondary;
@@ -179,24 +181,43 @@ function App() {
               onSelectVideoType={setSelectedVideoType}
             />
 
-            {loading ? (
+            {loading && page === 1 ? (
               <div className="loading-container">
                 <div className="spinner"></div>
               </div>
             ) : (
               <div className="grid">
-                {filteredPosts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onClick={() => setSelectedPost(post)}
-                    getCategoryName={getCategoryName}
-                  />
-                ))}
+                {posts.map((post, index) => {
+                  if (posts.length === index + 1) {
+                    return (
+                      <PostCard
+                        ref={lastPostElementRef}
+                        key={post.id}
+                        post={post}
+                        onClick={() => setSelectedPost(post)}
+                        getCategoryName={getCategoryName}
+                      />
+                    );
+                  } else {
+                    return (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        onClick={() => setSelectedPost(post)}
+                        getCategoryName={getCategoryName}
+                      />
+                    );
+                  }
+                })}
+              </div>
+            )}
+            {loading && page > 1 && (
+              <div className="loading-container" style={{ height: '100px' }}>
+                <div className="spinner"></div>
               </div>
             )}
 
-            {filteredPosts.length === 0 && !loading && (
+            {posts.length === 0 && !loading && (
               <div className="text-center" style={{ padding: '4rem', color: 'var(--text-secondary)' }}>
                 <h3>No references found</h3>
                 <p>Try adjusting your filters or search query</p>

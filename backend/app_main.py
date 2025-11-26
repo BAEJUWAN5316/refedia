@@ -421,55 +421,62 @@ def create_post(
 
 
 @app.get("/api/posts", response_model=List[PostResponse])
+@app.get("/api/posts", response_model=List[PostResponse])
 def get_posts(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    limit: int = 20,
     primary_category: List[str] = Query(None),
     secondary_category: List[str] = Query(None),
+    filter_logic: str = "AND",
     video_type: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """게시물 목록 조회 (필터링 포함)"""
+    """게시물 목록 조회 (서버 사이드 필터링 & 페이지네이션)"""
     query = db.query(DBPost)
     
-    # Primary Category Filter (OR logic for multiple)
-    if primary_category:
-        conditions = []
-        for cat_id in primary_category:
-            # JSON 배열 내에 cat_id가 포함되어 있는지 확인 (SQLite/PostgreSQL 호환성 주의)
-            # 여기서는 간단히 문자열 포함 여부로 체크하거나, 실제로는 DB 특화 함수 필요할 수 있음
-            # 하지만 현재 구조상 JSON 타입이므로, Python 측에서 필터링하거나 DB 함수 사용
-            # SQLite에서는 JSON_EXTRACT 등을 사용해야 함.
-            # 여기서는 간단하게 구현:
-            pass 
-            # SQLAlchemy의 JSON 타입 필터링은 DB마다 다름.
-            # SQLite의 경우:
-            # query = query.filter(Post.primary_categories.contains(cat_id)) # PostgreSQL
-            # SQLite는 contains 지원이 제한적일 수 있음.
-            
-        # 임시: Python 레벨 필터링은 비효율적이므로, DB 레벨에서 처리해야 함.
-        # 하지만 지금은 복잡한 쿼리 대신, 모든 포스트를 가져와서 필터링하는 방식은 데이터가 많으면 느림.
-        # 일단 기존 로직을 복원 (기존 로직이 어땠는지 기억해야 함)
-        # 기존에는 단일 카테고리 필터였음. 다중 필터로 변경됨.
-        pass
-
-    # 검색 필터
-    if search:
-        query = query.filter(or_(DBPost.title.contains(search), DBPost.memo.contains(search)))
-    
-    if video_type:
+    # 1. Video Type
+    if video_type and video_type != 'all':
         query = query.filter(DBPost.video_type == video_type)
         
-    # 정렬
-    posts = query.options(joinedload(DBPost.author)).order_by(DBPost.created_at.desc()).all()
+    # 2. Search (Title, Memo)
+    if search:
+        search_pattern = f"%{search}%"
+        # DBPost에는 description 컬럼이 없으므로 title과 memo만 검색
+        query = query.filter(
+            or_(
+                DBPost.title.like(search_pattern),
+                DBPost.memo.like(search_pattern)
+            )
+        )
     
-    # 메모리 내 필터링 (JSON 배열 필터링의 복잡성 회피)
+    # 3. Category Filter (JSON List Filtering)
+    # SQLite/Generic: Cast JSON to String and use LIKE '%"cat_id"%'
+    # This assumes JSON is stored as ["id1", "id2"] with double quotes.
+    
     if primary_category:
-        posts = [p for p in posts if any(c in p.primary_categories for c in primary_category)]
-        
+        if filter_logic == 'AND':
+            for cat_id in primary_category:
+                query = query.filter(DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%'))
+        else: # OR
+            conditions = [DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in primary_category]
+            query = query.filter(or_(*conditions))
+
     if secondary_category:
-        posts = [p for p in posts if any(c in p.secondary_categories for c in secondary_category)]
+        if filter_logic == 'AND':
+            for cat_id in secondary_category:
+                query = query.filter(DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%'))
+        else: # OR
+            conditions = [DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in secondary_category]
+            query = query.filter(or_(*conditions))
+        
+    # Pagination
+    skip = (page - 1) * limit
+    posts = query.options(joinedload(DBPost.author))\
+                 .order_by(DBPost.created_at.desc())\
+                 .offset(skip)\
+                 .limit(limit)\
+                 .all()
     
     # 작성자 이름 명시적으로 설정
     for post in posts:
