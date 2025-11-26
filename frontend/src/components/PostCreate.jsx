@@ -76,8 +76,8 @@ export default function PostCreate({ onClose, onPostCreated }) {
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal" style={{ maxWidth: '600px', width: '90%' }}>
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" style={{ maxWidth: '600px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
                     <h3 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>New Reference</h3>
                     <button className="btn btn-icon" onClick={onClose} style={{ fontSize: '1.2rem' }}>❌</button>

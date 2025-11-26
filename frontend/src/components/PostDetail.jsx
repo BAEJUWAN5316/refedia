@@ -553,7 +553,7 @@ export default function PostDetail({ postId, onClose, onUpdate }) {
                                         </div>
                                     </div>
                                     <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                                        {post.description || 'No description provided.'}
+                                        {post.memo || post.description || 'No memo provided.'}
                                     </p>
                                     <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                                         Added by {post.author_name || 'Unknown'} on {new Date(post.created_at).toLocaleDateString()}

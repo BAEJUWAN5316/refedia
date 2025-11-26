@@ -1,19 +1,20 @@
 import React from 'react';
 import SearchBar from './SearchBar';
+import refediaLogo from '../../assets/refedia.png';
 
 export default function Header({
     onSearch,
     onAdminClick,
+    onCreateClick,
     currentUser,
     onLoginClick,
-    onLogoutClick,
-    onCreateClick
+    onLogoutClick
 }) {
     return (
         <header className="header">
             <div className="container header-content">
                 <div className="logo-section">
-                    <h1 className="logo">Refedia</h1>
+                    <img src={refediaLogo} alt="Refedia" style={{ width: '150px', height: 'auto' }} />
                 </div>
 
                 {currentUser && (
