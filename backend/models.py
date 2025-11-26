@@ -91,6 +91,7 @@ class PostResponse(BaseModel):
     primary_categories: List[str]
     secondary_categories: List[str]
     memo: Optional[str] = None
+    user_id: int
     author_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

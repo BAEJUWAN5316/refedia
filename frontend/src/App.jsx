@@ -22,6 +22,8 @@ function App() {
   const [filterLogic, setFilterLogic] = useState('AND'); // 'AND' or 'OR'
   const [selectedVideoType, setSelectedVideoType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Auth State
   const [currentUser, setCurrentUser] = useState(null);
@@ -70,7 +72,9 @@ function App() {
         limit: 20,
         filter_logic: filterLogic,
         video_type: selectedVideoType !== 'all' ? selectedVideoType : '',
-        search: searchQuery
+        search: searchQuery,
+        start_date: startDate,
+        end_date: endDate
       });
 
       selectedPrimary.forEach(id => params.append('primary_category', id));
@@ -90,7 +94,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery]);
+  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery, startDate, endDate]);
 
   // Filter Change Effect
   useEffect(() => {
@@ -147,8 +151,6 @@ function App() {
     setShowLogin(true); // Show login modal immediately after logout
   };
 
-
-
   const getCategoryName = (id, type) => {
     const list = type === 'primary' ? categories.primary : categories.secondary;
     const cat = list.find(c => c.id === id);
@@ -179,6 +181,10 @@ function App() {
               onToggleLogic={setFilterLogic}
               selectedVideoType={selectedVideoType}
               onSelectVideoType={setSelectedVideoType}
+              startDate={startDate}
+              onStartDateChange={setStartDate}
+              endDate={endDate}
+              onEndDateChange={setEndDate}
             />
 
             {loading && page === 1 ? (
@@ -241,18 +247,22 @@ function App() {
         />
       )}
 
-      {selectedPost && (
-        <PostDetail
-          postId={selectedPost.id}
-          onClose={() => setSelectedPost(null)}
-          onUpdate={fetchPosts}
-        />
-      )}
-
       {showPostCreate && (
         <PostCreate
           onClose={() => setShowPostCreate(false)}
-          onPostCreated={fetchPosts}
+          onPostCreated={() => {
+            fetchPosts(1);
+            setPage(1);
+          }}
+        />
+      )}
+
+      {selectedPost && (
+        <PostDetail
+          postId={selectedPost.id}
+          currentUser={currentUser}
+          onClose={() => setSelectedPost(null)}
+          onUpdate={fetchPosts}
         />
       )}
 

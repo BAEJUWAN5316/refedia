@@ -3,7 +3,7 @@ import CategorySelector from './CategorySelector';
 
 const API_URL = 'http://localhost:8000';
 
-export default function PostDetail({ postId, onClose, onUpdate }) {
+export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const [post, setPost] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
@@ -544,12 +544,16 @@ export default function PostDetail({ postId, onClose, onUpdate }) {
                                             <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{post.title}</h2>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button className="btn btn-secondary btn-sm" onClick={() => setIsEditing(true)}>
-                                                ✏️ Edit
-                                            </button>
-                                            <button className="btn btn-danger btn-sm" onClick={handleDelete}>
-                                                🗑️ Delete
-                                            </button>
+                                            {currentUser && (currentUser.is_admin || currentUser.id === post.user_id) && (
+                                                <>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => setIsEditing(true)}>
+                                                        ✏️ Edit
+                                                    </button>
+                                                    <button className="btn btn-danger btn-sm" onClick={handleDelete}>
+                                                        🗑️ Delete
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>

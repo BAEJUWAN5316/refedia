@@ -9,7 +9,8 @@ export default function CategoryFilter({
     filterLogic,
     onToggleLogic,
     selectedVideoType,
-    onSelectVideoType
+    onSelectVideoType,
+    ...props
 }) {
     const toggleSelection = (id, currentSelected, setSelection) => {
         if (currentSelected.includes(id)) {
@@ -58,6 +59,28 @@ export default function CategoryFilter({
                     >
                         OR
                     </button>
+                </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
+                <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Date Range:</span>
+                    <input
+                        type="date"
+                        className="form-input"
+                        style={{ padding: '0.4rem', fontSize: '0.9rem', width: 'auto' }}
+                        value={props.startDate || ''}
+                        onChange={(e) => props.onStartDateChange(e.target.value)}
+                    />
+                    <span style={{ color: 'var(--text-secondary)' }}>~</span>
+                    <input
+                        type="date"
+                        className="form-input"
+                        style={{ padding: '0.4rem', fontSize: '0.9rem', width: 'auto' }}
+                        value={props.endDate || ''}
+                        onChange={(e) => props.onEndDateChange(e.target.value)}
+                    />
                 </div>
             </div>
 

@@ -430,6 +430,8 @@ def get_posts(
     filter_logic: str = "AND",
     video_type: Optional[str] = None,
     search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """게시물 목록 조회 (서버 사이드 필터링 & 페이지네이션)"""
@@ -450,7 +452,26 @@ def get_posts(
             )
         )
     
-    # 3. Category Filter (JSON List Filtering)
+    # 3. Date Range Filter
+    if start_date:
+        # start_date format: YYYY-MM-DD
+        # created_at is DateTime, so compare with start of day
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(DBPost.created_at >= start_dt)
+        except ValueError:
+            pass # Invalid date format, ignore
+
+    if end_date:
+        # end_date format: YYYY-MM-DD
+        # To include the end date fully, compare < end_date + 1 day
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            query = query.filter(DBPost.created_at < end_dt)
+        except ValueError:
+            pass # Invalid date format, ignore
+    
+    # 4. Category Filter (JSON List Filtering)
     # SQLite/Generic: Cast JSON to String and use LIKE '%"cat_id"%'
     # This assumes JSON is stored as ["id1", "id2"] with double quotes.
     
