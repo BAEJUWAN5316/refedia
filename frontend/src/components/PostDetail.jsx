@@ -7,7 +7,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const [post, setPost] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
-    const [editedDescription, setEditedDescription] = useState('');
+    const [editedMemo, setEditedMemo] = useState('');
     const [editedPrimary, setEditedPrimary] = useState([]);
     const [editedSecondary, setEditedSecondary] = useState([]);
     const [editedVideoType, setEditedVideoType] = useState('');
@@ -36,7 +36,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
             const data = await response.json();
             setPost(data);
             setEditedTitle(data.title);
-            setEditedDescription(data.description || '');
+            setEditedMemo(data.memo || '');
             setEditedPrimary(data.primary_categories || (data.primary_category_id ? [data.primary_category_id] : []));
             setEditedSecondary(data.secondary_categories || (data.secondary_category_id ? [data.secondary_category_id] : []));
             setEditedVideoType(data.video_type);
@@ -275,7 +275,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                 },
                 body: JSON.stringify({
                     title: editedTitle,
-                    description: editedDescription,
+                    memo: editedMemo,
                     primary_categories: editedPrimary,
                     secondary_categories: editedSecondary,
                     video_type: editedVideoType,
@@ -489,11 +489,11 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                                         />
                                     </div>
                                     <div className="input-group">
-                                        <label className="input-label">Description</label>
+                                        <label className="input-label">Memo</label>
                                         <textarea
                                             className="input-field"
-                                            value={editedDescription}
-                                            onChange={e => setEditedDescription(e.target.value)}
+                                            value={editedMemo}
+                                            onChange={e => setEditedMemo(e.target.value)}
                                             rows={4}
                                         />
                                     </div>
@@ -557,7 +557,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                                         </div>
                                     </div>
                                     <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                                        {post.memo || post.description || 'No memo provided.'}
+                                        {post.memo || 'No memo provided.'}
                                     </p>
                                     <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                                         Added by {post.author_name || 'Unknown'} on {new Date(post.created_at).toLocaleDateString()}
