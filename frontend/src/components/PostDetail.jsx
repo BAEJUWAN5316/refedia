@@ -330,16 +330,22 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                         </h3>
                         {!isEditing && (
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {post.primary_categories && post.primary_categories.map(catId => (
-                                    <span key={catId} className="badge badge-primary">
-                                        {getCategoryName(catId, 'primary')}
-                                    </span>
-                                ))}
-                                {post.secondary_categories && post.secondary_categories.map(catId => (
-                                    <span key={catId} className="badge badge-secondary">
-                                        {getCategoryName(catId, 'secondary')}
-                                    </span>
-                                ))}
+                                {post.primary_categories && post.primary_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'primary') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-primary">
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                {post.secondary_categories && post.secondary_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-secondary">
+                                            {cat.name}
+                                        </span>
+                                    ))}
                                 <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'}`}>
                                     {post.video_type === 'long' ? '📺 Long Form' : '📱 Short Form'}
                                 </span>

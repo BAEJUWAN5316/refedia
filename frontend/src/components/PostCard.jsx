@@ -19,16 +19,22 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                 <h3 className="post-title" title={post.title}>{post.title}</h3>
 
                 <div className="post-tags">
-                    {post.primary_categories && post.primary_categories.map(catId => (
-                        <span key={catId} className="badge badge-primary">
-                            {getCategoryName(catId, 'primary')}
-                        </span>
-                    ))}
-                    {post.secondary_categories && post.secondary_categories.map(catId => (
-                        <span key={catId} className="badge badge-secondary">
-                            {getCategoryName(catId, 'secondary')}
-                        </span>
-                    ))}
+                    {post.primary_categories && post.primary_categories
+                        .map(id => ({ id, name: getCategoryName(id, 'primary') }))
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(cat => (
+                            <span key={cat.id} className="badge badge-primary">
+                                {cat.name}
+                            </span>
+                        ))}
+                    {post.secondary_categories && post.secondary_categories
+                        .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(cat => (
+                            <span key={cat.id} className="badge badge-secondary">
+                                {cat.name}
+                            </span>
+                        ))}
                 </div>
 
                 <div className="post-footer">

@@ -222,13 +222,7 @@ def delete_user(user_id: int, current_user: User = Depends(get_current_admin_use
 # Category API
 # ========================================
 
-@app.get("/api/categories")
-def get_categories(db: Session = Depends(get_db)):
-    """카테고리 목록 (primary/secondary 그룹화)"""
-    categories = db.query(Category).all()
-    primary = [{"id": c.id, "name": c.name} for c in categories if c.type == "primary"]
-    secondary = [{"id": c.id, "name": c.name} for c in categories if c.type == "secondary"]
-    return {"primary": primary, "secondary": secondary}
+
 
 @app.post("/api/categories", response_model=CategoryResponse)
 def create_category(category_data: CategoryCreate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
@@ -294,7 +288,8 @@ def get_youtube_frames(
 @app.get("/api/categories")
 def get_categories(db: Session = Depends(get_db)):
     """카테고리 목록 (primary/secondary 그룹화)"""
-    categories = db.query(Category).all()
+    # 이름순 정렬하여 조회
+    categories = db.query(Category).order_by(Category.name).all()
     
     primary = [{"id": c.id, "name": c.name} for c in categories if c.type == "primary"]
     secondary = [{"id": c.id, "name": c.name} for c in categories if c.type == "secondary"]
