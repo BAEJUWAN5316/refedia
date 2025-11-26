@@ -7,8 +7,6 @@ export default function PostCreate({ onClose, onPostCreated }) {
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [step, setStep] = useState(1); // 1: URL Input, 2: Details
-    const [metadata, setMetadata] = useState(null);
     const [categories, setCategories] = useState({ primary: [], secondary: [] });
 
     // Form State
@@ -31,34 +29,18 @@ export default function PostCreate({ onClose, onPostCreated }) {
         }
     };
 
-    const handleUrlSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-
-        try {
-            // Validate URL format first
-            if (!url.includes('youtube.com/') && !url.includes('youtu.be/')) {
-                throw new Error('Please enter a valid YouTube URL');
-            }
-
-            // In a real app, we might want to pre-validate with backend or just proceed
-            // Here we'll just move to next step and let backend handle extraction on save
-            // OR we can fetch metadata now. Let's fetch metadata now to show preview.
-            // But the backend create_post handles extraction. 
-            // Let's just move to step 2 and show the URL. 
-            // Ideally we should have an endpoint to "preview" or "extract" metadata before saving.
-            // For now, let's assume we just collect data and submit.
-
-            setStep(2);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleSubmit = async () => {
+        if (!url) {
+            setError('Please enter a YouTube URL');
+            return;
+        }
+
+        // Basic validation
+        if (!url.includes('youtube.com/') && !url.includes('youtu.be/')) {
+            setError('Please enter a valid YouTube URL');
+            return;
+        }
+
         setLoading(true);
         setError('');
 
@@ -95,88 +77,93 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
     return (
         <div className="modal-overlay">
-            <div className="modal">
-                <div className="modal-header">
-                    <h3 className="modal-title">New Reference</h3>
-                    <button className="btn btn-icon" onClick={onClose}>❌</button>
+            <div className="modal" style={{ maxWidth: '600px', width: '90%' }}>
+                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <h3 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>New Reference</h3>
+                    <button className="btn btn-icon" onClick={onClose} style={{ fontSize: '1.2rem' }}>❌</button>
                 </div>
 
-                <div className="modal-body">
-                    {error && <div className="text-danger mb-3">{error}</div>}
-
-                    {step === 1 ? (
-                        <div className="input-group">
-                            <label className="input-label">YouTube URL</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    value={url}
-                                    onChange={(e) => setUrl(e.target.value)}
-                                    placeholder="https://www.youtube.com/watch?v=..."
-                                    autoFocus
-                                />
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={handleUrlSubmit}
-                                    disabled={!url || loading}
-                                >
-                                    Next
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            <div className="input-group">
-                                <label className="input-label">URL</label>
-                                <input type="text" className="input-field" value={url} disabled />
-                            </div>
-
-                            <div className="input-group">
-                                <label className="input-label">Primary Category (Max 1)</label>
-                                <CategorySelector
-                                    categories={categories}
-                                    type="primary"
-                                    selected={primaryCats}
-                                    onChange={setPrimaryCats}
-                                    maxSelect={1}
-                                />
-                            </div>
-
-                            <div className="input-group">
-                                <label className="input-label">Secondary Category (Max 1)</label>
-                                <CategorySelector
-                                    categories={categories}
-                                    type="secondary"
-                                    selected={secondaryCats}
-                                    onChange={setSecondaryCats}
-                                    maxSelect={1}
-                                />
-                            </div>
-
-                            <div className="input-group">
-                                <label className="input-label">Memo</label>
-                                <textarea
-                                    className="input-field"
-                                    rows={3}
-                                    value={memo}
-                                    onChange={(e) => setMemo(e.target.value)}
-                                    placeholder="Add a note..."
-                                />
-                            </div>
-
-                            <div className="flex justify-between mt-4">
-                                <button className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={handleSubmit}
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Saving...' : 'Save Reference'}
-                                </button>
-                            </div>
+                <div className="modal-body" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {error && (
+                        <div className="text-danger" style={{ padding: '0.75rem', background: '#ffebee', borderRadius: '8px', border: '1px solid #ffcdd2' }}>
+                            {error}
                         </div>
                     )}
+
+                    <div className="input-group">
+                        <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                            YouTube URL <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="input-field"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            autoFocus
+                            style={{ padding: '0.75rem', fontSize: '1rem', width: '100%' }}
+                        />
+                    </div>
+
+                    <div className="grid grid-2" style={{ gap: '1.5rem' }}>
+                        <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                                Primary Category
+                            </label>
+                            <CategorySelector
+                                categories={categories}
+                                type="primary"
+                                selected={primaryCats}
+                                onChange={setPrimaryCats}
+                                maxSelect={1}
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                                Secondary Category
+                            </label>
+                            <CategorySelector
+                                categories={categories}
+                                type="secondary"
+                                selected={secondaryCats}
+                                onChange={setSecondaryCats}
+                                maxSelect={1}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="input-group">
+                        <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                            Memo
+                        </label>
+                        <textarea
+                            className="input-field"
+                            rows={4}
+                            value={memo}
+                            onChange={(e) => setMemo(e.target.value)}
+                            placeholder="Add a note about this reference..."
+                            style={{ padding: '0.75rem', fontSize: '1rem', width: '100%', resize: 'vertical' }}
+                        />
+                    </div>
+
+                    <div className="flex gap-3 mt-4" style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            style={{ flex: 2, padding: '0.75rem', fontSize: '1.1rem', justifyContent: 'center' }}
+                        >
+                            {loading ? '💾 Saving...' : '💾 Save Reference'}
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={onClose}
+                            style={{ flex: 1, padding: '0.75rem', fontSize: '1.1rem', justifyContent: 'center' }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
