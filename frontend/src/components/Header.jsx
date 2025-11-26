@@ -11,9 +11,9 @@ export default function Header({
 }) {
     return (
         <header className="header">
-            <div className="header-content">
+            <div className="container header-content">
                 <div className="logo-section">
-                    <h1 className="logo">Refepidia</h1>
+                    <h1 className="logo">Refedia</h1>
                 </div>
 
                 {currentUser && (
