@@ -637,6 +637,39 @@ async def download_image(url: str = Query(...)):
             detail=f"Failed to download image: {str(e)}"
         )
 
+# ========================================
+# Static File Serving (SPA Support)
+# ========================================
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# frontend/dist 디렉토리가 존재하면 정적 파일 서빙
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    
+    # favicon.ico 등 루트 레벨 파일 처리
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        return FileResponse(os.path.join(frontend_dist, "favicon.ico"))
+
+    # SPA Fallback
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # API 경로는 제외
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="Not Found")
+            
+        # 파일이 존재하면 서빙
+        file_path = os.path.join(frontend_dist, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+            
+        # 그 외에는 index.html 반환 (SPA 라우팅)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
