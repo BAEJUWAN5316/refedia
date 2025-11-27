@@ -488,16 +488,21 @@ def get_posts(
     # 2. Search (Title, Memo)
     if search:
         import unicodedata
-        # Normalize search term to NFC (standard for Korean)
-        search_normalized = unicodedata.normalize('NFC', search)
-        print(f"DEBUG: Search term='{search}', Normalized='{search_normalized}'")
+        # Normalize search term to both NFC and NFD to cover all bases
+        search_nfc = unicodedata.normalize('NFC', search)
+        search_nfd = unicodedata.normalize('NFD', search)
+        print(f"DEBUG: Search term='{search}', NFC='{search_nfc}', NFD='{search_nfd}'")
         
-        search_pattern = f"%{search_normalized}%"
+        search_pattern_nfc = f"%{search_nfc}%"
+        search_pattern_nfd = f"%{search_nfd}%"
+        
         # DBPost에는 description 컬럼이 없으므로 title과 memo만 검색
         query = query.filter(
             or_(
-                DBPost.title.ilike(search_pattern),
-                DBPost.memo.ilike(search_pattern)
+                DBPost.title.ilike(search_pattern_nfc),
+                DBPost.title.ilike(search_pattern_nfd),
+                DBPost.memo.ilike(search_pattern_nfc),
+                DBPost.memo.ilike(search_pattern_nfd)
             )
         )
     
