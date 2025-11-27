@@ -70,3 +70,14 @@
 2025-11-26 18:36:00 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
 2025-11-26 19:40:00 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
 2025-11-26 20:15:12 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 11:31:55 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 11:32:09 - WARNING - Login FAILED: test1@test.com from 127.0.0.1
+2025-11-27 11:32:11 - WARNING - Login FAILED: test1@test.com from 127.0.0.1
+2025-11-27 11:32:12 - WARNING - Login FAILED: test1@test.com from 127.0.0.1
+2025-11-27 11:32:13 - WARNING - Login FAILED: test1@test.com from 127.0.0.1
+2025-11-27 11:34:40 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 11:46:27 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 11:46:47 - WARNING - Login FAILED: SDF@df.com from 127.0.0.1
+2025-11-27 11:47:22 - WARNING - Login FAILED: test1@test.com from 127.0.0.1
+2025-11-27 11:47:34 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 12:21:09 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
