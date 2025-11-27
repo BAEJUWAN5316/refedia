@@ -108,10 +108,13 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
     """
     YouTube 영상에서 랜덤 프레임 추출 (Base64)
     """
-    # ffmpeg 확인
-    import shutil
-    if not shutil.which("ffmpeg"):
-        print("❌ ffmpeg not found! Cannot extract frames.")
+    # ffmpeg 확인 (imageio-ffmpeg 사용)
+    import imageio_ffmpeg
+    ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+    print(f"🎥 ffmpeg path: {ffmpeg_path}")
+    
+    if not ffmpeg_path or not os.path.exists(ffmpeg_path):
+        print("❌ ffmpeg not found via imageio-ffmpeg!")
         return []
 
     # 캐시 확인
@@ -138,6 +141,7 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             'ignoreerrors': True,
             'no_check_certificate': True,
             'geo_bypass': True,
+            'ffmpeg_location': ffmpeg_path,  # Explicitly set ffmpeg path
         }
         
         print(f"🎬 Downloading video from {url} to {temp_video_path}...")
