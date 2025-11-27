@@ -627,9 +627,9 @@ async def download_image(url: str = Query(...)):
                     detail="Image too large (max 10MB)"
                 )
             
-            return JSONResponse(
-                content={"data": base64.b64encode(response.content).decode('utf-8')}, 
-                media_type="application/json"
+            return Response(
+                content=response.content,
+                media_type=response.headers.get("content-type", "image/jpeg")
             )
     except httpx.HTTPError as e:
         raise HTTPException(
