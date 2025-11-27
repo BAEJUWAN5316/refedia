@@ -35,8 +35,47 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
             return title, thumbnail, video_type
     
     except Exception as e:
-        print(f"❌ YouTube metadata extraction failed: {e}")
-        # Fallback: URL에서 타입만 추출
+        print(f"❌ YouTube metadata extraction failed with yt-dlp: {e}")
+        print("⚠️ Attempting fallback extraction...")
+        
+        try:
+            # Fallback: Manual extraction
+            video_id = None
+            if 'v=' in url:
+                video_id = url.split('v=')[1].split('&')[0]
+            elif 'youtu.be/' in url:
+                video_id = url.split('youtu.be/')[1].split('?')[0]
+            elif 'shorts/' in url:
+                video_id = url.split('shorts/')[1].split('?')[0]
+            
+            if video_id:
+                # 1. Construct Thumbnail URL
+                thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+                
+                # 2. Extract Title via Requests
+                import requests
+                import re
+                
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+                response = requests.get(url, headers=headers, timeout=5)
+                
+                title = "YouTube Video"
+                if response.status_code == 200:
+                    matches = re.findall(r'<title>(.*?)</title>', response.text)
+                    if matches:
+                        title = matches[0].replace(" - YouTube", "")
+                
+                video_type = 'short' if '/shorts/' in url else 'long'
+                
+                print(f"✅ Fallback extraction successful: {title}")
+                return title, thumbnail, video_type
+                
+        except Exception as fallback_error:
+            print(f"❌ Fallback extraction also failed: {fallback_error}")
+
+        # Final Fallback
         video_type = 'short' if '/shorts/' in url else 'long'
         return "YouTube Video", None, video_type
 
