@@ -30,6 +30,8 @@ from youtube_service import extract_youtube_metadata, extract_frames, validate_y
 from security_logger import log_login_attempt, log_security_event
 
 # 데이터베이스 테이블 생성
+# [WARNING] One-time DB Reset: Drop all tables before creating new ones
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
