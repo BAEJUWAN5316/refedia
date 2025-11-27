@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import CategorySelector from './CategorySelector';
-
 import { API_URL } from '../config';
 
 export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
@@ -14,12 +13,9 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [categories, setCategories] = useState({ primary: [], secondary: [] });
-    const [loadingFrames, setLoadingFrames] = useState(false);
-    const [frames, setFrames] = useState([]);
     const [copyUrlText, setCopyUrlText] = useState('Copy');
     const [isSaving, setIsSaving] = useState(false);
     const [isThumbnailCopied, setIsThumbnailCopied] = useState(false);
-    const [copiedFrameIdx, setCopiedFrameIdx] = useState(null);
     const [isFavorited, setIsFavorited] = useState(false);
 
     useEffect(() => {
@@ -41,7 +37,6 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
             setEditedPrimary(data.primary_categories || (data.primary_category_id ? [data.primary_category_id] : []));
             setEditedSecondary(data.secondary_categories || (data.secondary_category_id ? [data.secondary_category_id] : []));
             setEditedVideoType(data.video_type);
-            setFrames(data.frames || []);
             setIsFavorited(data.is_favorited);
         } catch (err) {
             setError(err.message);
@@ -69,11 +64,9 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
         try {
             let blob;
             if (imageUrl.startsWith('data:')) {
-                // Handle Base64
                 const response = await fetch(imageUrl);
                 blob = await response.blob();
             } else {
-                // Handle URL via Proxy
                 const token = sessionStorage.getItem('token');
                 const proxyUrl = `${API_URL}/api/download/image?url=${encodeURIComponent(imageUrl)}`;
                 const response = await fetch(proxyUrl, {
@@ -97,23 +90,6 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
         }
     };
 
-    const handleCopyBase64Image = async (base64String, idx) => {
-        try {
-            const response = await fetch(base64String);
-            const blob = await response.blob();
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    [blob.type]: blob
-                })
-            ]);
-            setCopiedFrameIdx(idx);
-            setTimeout(() => setCopiedFrameIdx(null), 2000);
-        } catch (err) {
-            console.error('Failed to copy image:', err);
-            // alert('Failed to copy image to clipboard'); // Alert removed
-        }
-    };
-
     const getCategoryName = (categoryId, type) => {
         const list = type === 'primary' ? categories.primary : categories.secondary;
         const category = list.find(c => c.id === categoryId);
@@ -123,59 +99,14 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const getYouTubeEmbedUrl = (url) => {
         if (!url) return '';
         let videoId = '';
-
-        // youtube.com/watch?v=VIDEO_ID
         if (url.includes('v=')) {
             videoId = url.split('v=')[1]?.split('&')[0];
-        }
-        // youtu.be/VIDEO_ID
-        else if (url.includes('youtu.be/')) {
+        } else if (url.includes('youtu.be/')) {
             videoId = url.split('youtu.be/')[1]?.split('?')[0];
-        }
-        // youtube.com/shorts/VIDEO_ID
-        else if (url.includes('shorts/')) {
+        } else if (url.includes('shorts/')) {
             videoId = url.split('shorts/')[1]?.split('?')[0];
         }
-
         return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
-    };
-
-    const handleRefreshFrames = async () => {
-        if (!post?.url) return;
-        setLoadingFrames(true);
-        try {
-            const token = sessionStorage.getItem('token');
-            const response = await fetch(
-                `${API_URL}/api/youtube/frames?url=${encodeURIComponent(post.url)}&count=4`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
-            );
-
-            if (response.ok) {
-                const data = await response.json();
-                const newFrames = data.frames || []; // Backend returns { frames: [...], count: ... }
-                setFrames(newFrames);
-                // Update local post state with new frames
-                setPost(prev => ({ ...prev, frames: newFrames }));
-
-                // Also update backend to save these frames
-                await fetch(`${API_URL}/api/posts/${postId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        ...post,
-                        frames: newFrames
-                    })
-                });
-            }
-        } catch (error) {
-            console.error('Failed to refresh frames:', error);
-            alert('Failed to refresh frames');
-        } finally {
-            setLoadingFrames(false);
-        }
     };
 
     const handleCopyUrl = async () => {
@@ -217,17 +148,14 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                 blob = await response.blob();
             } else {
                 const token = sessionStorage.getItem('token');
-                // Use proxy to avoid CORS
                 const proxyUrl = `${API_URL}/api/download/image?url=${encodeURIComponent(post.thumbnail)}`;
                 const response = await fetch(proxyUrl, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-
                 if (!response.ok) throw new Error('Failed to fetch image');
                 blob = await response.blob();
             }
 
-            // Try copying directly first
             try {
                 await navigator.clipboard.write([
                     new ClipboardItem({
@@ -236,7 +164,6 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                 ]);
             } catch (writeError) {
                 console.warn('Direct copy failed, trying PNG conversion:', writeError);
-                // Fallback: Convert to PNG and try again (fixes WebP/unsupported type issues)
                 const pngBlob = await convertBlobToPng(blob);
                 await navigator.clipboard.write([
                     new ClipboardItem({
@@ -249,7 +176,6 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
             setTimeout(() => setIsThumbnailCopied(false), 2000);
         } catch (err) {
             console.error('Failed to copy image:', err);
-            // Show failure feedback on button
             const btn = document.getElementById('copy-thumb-btn');
             if (btn) {
                 const originalText = btn.innerText;
@@ -280,8 +206,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                     memo: editedMemo,
                     primary_categories: editedPrimary,
                     secondary_categories: editedSecondary,
-                    video_type: editedVideoType,
-                    frames: frames
+                    video_type: editedVideoType
                 })
             });
 
@@ -330,7 +255,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
             if (response.ok) {
                 const data = await response.json();
                 setIsFavorited(data.is_favorited);
-                if (onUpdate) onUpdate(); // Update list view as well
+                if (onUpdate) onUpdate();
             }
         } catch (error) {
             console.error('Failed to toggle favorite:', error);
@@ -395,7 +320,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '2rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                        {/* 1. Playable YouTube Screen (Top Priority) */}
+                        {/* 1. Playable YouTube Screen */}
                         <div style={{ width: '100%' }}>
                             <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
                                 <iframe
@@ -406,9 +331,8 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                             </div>
                         </div>
 
-                        {/* 2. Thumbnail & 3. URL (Side by Side or Stacked) */}
+                        {/* 2. Thumbnail & 3. URL */}
                         <div className="grid grid-2" style={{ gap: '1.5rem', alignItems: 'start' }}>
-                            {/* 2. Thumbnail Display & Actions */}
                             <div className="card" style={{ padding: '1.5rem' }}>
                                 <h4 style={{ marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>Thumbnail</h4>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
@@ -446,77 +370,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                             </div>
                         </div>
 
-                        {/* 4. Frame Extraction */}
-                        <div className="card" style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Key Frames</h4>
-                                <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={handleRefreshFrames}
-                                    disabled={loadingFrames}
-                                >
-                                    {loadingFrames ? '🔄 Extracting...' : '🔄 Extract New Frames'}
-                                </button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                                {frames.map((frame, idx) => (
-                                    <div key={idx} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                                        <img
-                                            src={frame}
-                                            alt={`Frame ${idx + 1}`}
-                                            style={{ width: '100%', height: 'auto', display: 'block' }}
-                                        />
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: 0, left: 0, right: 0, bottom: 0,
-                                            background: 'rgba(0,0,0,0.6)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            opacity: 0,
-                                            transition: 'opacity 0.2s',
-                                            cursor: 'pointer'
-                                        }}
-                                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                            onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                                            onClick={() => handleDownloadImage(frame, `frame-${idx + 1}.jpg`)}
-                                        >
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button
-                                                    className="btn btn-sm btn-primary"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDownloadImage(frame, `frame-${idx + 1}.jpg`);
-                                                    }}
-                                                >
-                                                    ⬇️
-                                                </button>
-                                                <button
-                                                    className={`btn btn-sm ${copiedFrameIdx === idx ? 'btn-success' : 'btn-secondary'}`}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleCopyBase64Image(frame, idx);
-                                                    }}
-                                                    style={{
-                                                        backgroundColor: copiedFrameIdx === idx ? '#28a745' : '',
-                                                        color: copiedFrameIdx === idx ? 'white' : ''
-                                                    }}
-                                                >
-                                                    {copiedFrameIdx === idx ? '✅' : '📋'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {frames.length === 0 && (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                        No frames extracted yet. Click the button above to extract.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Additional Info (Title, Desc, Categories, Edit) */}
+                        {/* Additional Info */}
                         <div className="card" style={{ padding: '2rem', marginTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                             {isEditing ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

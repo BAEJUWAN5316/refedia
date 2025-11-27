@@ -79,6 +79,7 @@ class PostUpdate(BaseModel):
     primary_categories: Optional[List[str]] = Field(None, max_items=5)
     secondary_categories: Optional[List[str]] = Field(None, max_items=5)
     memo: Optional[str] = Field(None, max_length=1000)
+    video_type: Optional[str] = None
 
 
 class PostResponse(BaseModel):

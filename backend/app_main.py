@@ -32,6 +32,45 @@ from security_logger import log_login_attempt, log_security_event
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
 
+# Startup Event: Create Admin User if not exists
+@app.on_event("startup")
+def startup_event():
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        email = "bae@socialmc.co.kr"
+        employee_id = "TH251110"
+        name = "배주완"
+        
+        # Check if user exists
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            print(f"Creating initial admin user: {email}")
+            new_user = User(
+                email=email,
+                name=name,
+                employee_id_hash=hash_employee_id(employee_id),
+                is_approved=True,
+                is_admin=True
+            )
+            db.add(new_user)
+            db.commit()
+            print("✅ Initial admin user created successfully.")
+        else:
+            print(f"ℹ️ Admin user {email} already exists. Skipping creation.")
+            
+            # Ensure admin privileges (optional, but good for safety)
+            if not user.is_admin or not user.is_approved:
+                user.is_admin = True
+                user.is_approved = True
+                db.commit()
+                print(f"✅ Updated existing user {email} to admin.")
+                
+    except Exception as e:
+        print(f"❌ Failed to create initial admin user: {e}")
+    finally:
+        db.close()
+
 app = FastAPI(title="Refedia API", version="1.0.0")
 
 # Rate Limiter 설정
@@ -297,27 +336,7 @@ def delete_category(category_id: str, current_user: User = Depends(get_current_a
 # YouTube API
 # ========================================
 
-@app.get("/api/youtube/frames")
-@limiter.limit("10/minute")  # YouTube API 과도한 호출 방지
-def get_youtube_frames(
-    request: Request,
-    url: str = Query(...), 
-    count: int = Query(4), 
-    current_user: User = Depends(get_current_approved_user)
-):
-    """YouTube 랜덤 프레임 추출 (Base64)"""
-    if not validate_youtube_url(url):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Invalid YouTube URL"
-        )
-    frames = extract_frames(url, count)
-    if not frames:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Failed to extract frames"
-        )
-    return {"frames": frames, "count": len(frames)}
+# Frame extraction endpoint removed as per user request
 
 
 
@@ -631,6 +650,8 @@ def update_post(
             post.secondary_categories = post_data.secondary_categories
         if post_data.memo is not None:
             post.memo = post_data.memo
+        if post_data.video_type is not None:
+            post.video_type = post_data.video_type
         
         db.commit()
         db.refresh(post)

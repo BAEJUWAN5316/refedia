@@ -72,6 +72,11 @@ class Post(Base):
                 return []
         return []
 
+    @primary_categories.setter
+    def primary_categories(self, value):
+        import json
+        self.primary_category = json.dumps(value)
+
     @property
     def secondary_categories(self):
         import json
@@ -81,6 +86,11 @@ class Post(Base):
             except:
                 return []
         return []
+
+    @secondary_categories.setter
+    def secondary_categories(self, value):
+        import json
+        self.secondary_category = json.dumps(value)
 
     @property
     def user_id(self):
