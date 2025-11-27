@@ -138,10 +138,16 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             'no_warnings': True,
             'overwrites': True,
             'nocheckcertificate': True,
-            'ignoreerrors': True,
+            'ignoreerrors': True, # Keep this to handle errors manually via file size check
             'no_check_certificate': True,
             'geo_bypass': True,
-            'ffmpeg_location': ffmpeg_path,  # Explicitly set ffmpeg path
+            'ffmpeg_location': ffmpeg_path,
+            # 봇 탐지 회피를 위한 안드로이드 클라이언트 에뮬레이션
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                }
+            }
         }
         
         print(f"🎬 Downloading video from {url} to {temp_video_path}...")
@@ -149,14 +155,8 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             ydl.download([url])
         
         # 파일 확인
-        if not os.path.exists(temp_video_path):
-            raise Exception(f"Video file not found at {temp_video_path}")
-            
-        file_size = os.path.getsize(temp_video_path)
-        print(f"📁 File size: {file_size} bytes")
-        
-        if file_size == 0:
-            raise Exception("Downloaded file is empty")
+        if not os.path.exists(temp_video_path) or os.path.getsize(temp_video_path) == 0:
+            raise Exception("Video download failed (empty file)")
 
         # OpenCV로 비디오 열기
         cap = cv2.VideoCapture(temp_video_path)
@@ -196,12 +196,35 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
         return frames_base64
     
     except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
         print(f"❌ Frame extraction failed: {e}")
-        print(f"   Detailed error: {error_details}")
+        print("⚠️ Attempting fallback to Thumbnail as Frame...")
         
-        # Return empty list but log the error
+        # Fallback: Use Thumbnail as a "Frame"
+        try:
+            # Extract ID
+            video_id = None
+            if 'v=' in url:
+                video_id = url.split('v=')[1].split('&')[0]
+            elif 'youtu.be/' in url:
+                video_id = url.split('youtu.be/')[1].split('?')[0]
+            elif 'shorts/' in url:
+                video_id = url.split('shorts/')[1].split('?')[0]
+                
+            if video_id:
+                thumb_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+                import requests
+                resp = requests.get(thumb_url, timeout=5)
+                if resp.status_code == 200:
+                    b64_thumb = base64.b64encode(resp.content).decode('utf-8')
+                    # Return the thumbnail repeated 'count' times or just once? 
+                    # Returning once is safer, frontend should handle it.
+                    # But to satisfy "count", let's return it once.
+                    fallback_frames = [f"data:image/jpeg;base64,{b64_thumb}"]
+                    print("✅ Fallback successful: Returned thumbnail as frame")
+                    return fallback_frames
+        except Exception as fb_e:
+            print(f"❌ Fallback failed: {fb_e}")
+            
         return []
     
     finally:
