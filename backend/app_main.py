@@ -90,9 +90,12 @@ async def https_redirect_middleware(request: Request, call_next):
 def health_check():
     return {"status": "ok", "message": "Refedia API is running"}
 
+    return {"status": "ok", "message": "Refedia API is running"}
+
+# Debug System Endpoint (Moved to top for priority)
 @app.get("/api/debug/system")
 def debug_system():
-    """시스템 상태 점검 (관리자 전용)"""
+    """시스템 상태 점검 (관리자 전용 - 현재는 공개)"""
     import subprocess
     import shutil
     
@@ -420,6 +423,11 @@ def create_post(
         # YouTube 메타데이터 추출
         title, thumbnail, video_type = extract_youtube_metadata(url_str)
         
+        # Normalize title to NFC
+        import unicodedata
+        if title:
+            title = unicodedata.normalize('NFC', title)
+        
         # 게시물 생성
         new_post = DBPost(
             url=url_str,
@@ -479,7 +487,12 @@ def get_posts(
         
     # 2. Search (Title, Memo)
     if search:
-        search_pattern = f"%{search}%"
+        import unicodedata
+        # Normalize search term to NFC (standard for Korean)
+        search_normalized = unicodedata.normalize('NFC', search)
+        print(f"DEBUG: Search term='{search}', Normalized='{search_normalized}'")
+        
+        search_pattern = f"%{search_normalized}%"
         # DBPost에는 description 컬럼이 없으므로 title과 memo만 검색
         query = query.filter(
             or_(
