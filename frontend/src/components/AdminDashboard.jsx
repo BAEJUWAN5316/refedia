@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function AdminDashboard({ onClose, categories, onCategoriesChanged, currentUser }) {
     const [users, setUsers] = useState([]);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import '../auth.css';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function Signup({ onSwitchToLogin }) {
     const [email, setEmail] = useState('');

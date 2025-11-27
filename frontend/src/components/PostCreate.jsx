@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import CategorySelector from './CategorySelector';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function PostCreate({ onClose, onPostCreated }) {
     const [url, setUrl] = useState('');

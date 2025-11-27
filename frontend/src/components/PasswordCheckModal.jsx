@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function PasswordCheckModal({ onSuccess, onClose }) {
     const [employeeId, setEmployeeId] = useState('');
@@ -16,7 +16,7 @@ export default function PasswordCheckModal({ onSuccess, onClose }) {
             const token = sessionStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/auth/verify-password`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
@@ -47,7 +47,7 @@ export default function PasswordCheckModal({ onSuccess, onClose }) {
 
                 <div className="modal-body">
                     {error && <div className="auth-error">{error}</div>}
-                    
+
                     <form onSubmit={handleVerify}>
                         <div className="input-group">
                             <label className="input-label">Employee ID (사번)</label>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import '../auth.css';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function Login({ onLogin, onSwitchToSignup }) {
     const [email, setEmail] = useState('');
@@ -42,7 +42,7 @@ export default function Login({ onLogin, onSwitchToSignup }) {
         <div className="auth-container">
             <div className="auth-card">
                 <h2 className="auth-title">Login</h2>
-                
+
                 {error && <div className="auth-error">{error}</div>}
 
                 <form onSubmit={handleSubmit}>

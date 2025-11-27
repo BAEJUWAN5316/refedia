@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CategorySelector from './CategorySelector';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config';
 
 export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const [post, setPost] = useState(null);

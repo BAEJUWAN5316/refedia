@@ -9,7 +9,7 @@ import Signup from './components/Signup';
 import PostCreate from './components/PostCreate';
 import './index.css';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from './config';
 
 function App() {
   // Data State
