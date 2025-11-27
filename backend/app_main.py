@@ -483,8 +483,8 @@ def get_posts(
         # DBPost에는 description 컬럼이 없으므로 title과 memo만 검색
         query = query.filter(
             or_(
-                DBPost.title.like(search_pattern),
-                DBPost.memo.like(search_pattern)
+                DBPost.title.ilike(search_pattern),
+                DBPost.memo.ilike(search_pattern)
             )
         )
     
@@ -699,8 +699,8 @@ if os.path.exists(frontend_dist):
     # SPA Fallback
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # API 경로는 제외
-        if full_path.startswith("api"):
+        # API 경로는 제외 (확실하게 처리)
+        if full_path.startswith("api") or full_path.startswith("/api"):
             raise HTTPException(status_code=404, detail="Not Found")
             
         # 파일이 존재하면 서빙

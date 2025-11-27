@@ -50,6 +50,11 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                     thumbnail = data.get('thumbnail_url')
                     video_type = 'short' if '/shorts/' in url else 'long'
                     print(f"✅ oEmbed extraction successful: {title}")
+                    
+                    # Force maxresdefault if possible, as oEmbed might return hqdefault
+                    if video_id := (url.split('v=')[1].split('&')[0] if 'v=' in url else None):
+                         thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+                    
                     return title, thumbnail, video_type
             except Exception as oembed_error:
                 print(f"⚠️ oEmbed failed: {oembed_error}")
