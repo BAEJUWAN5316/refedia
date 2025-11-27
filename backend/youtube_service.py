@@ -14,11 +14,36 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
     YouTube URL에서 메타데이터 추출
     Returns: (title, thumbnail_url, video_type)
     """
+    print(f"🔍 Extracting metadata for: {url}")
+    
+    # 1. Try oEmbed API first (Most reliable & Fast, avoids IP blocking)
+    try:
+        import requests
+        oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+        response = requests.get(oembed_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            title = data.get('title')
+            thumbnail = data.get('thumbnail_url')
+            video_type = 'short' if '/shorts/' in url else 'long'
+            print(f"✅ oEmbed extraction successful: {title}")
+            
+            # Force maxresdefault if possible
+            if video_id := (url.split('v=')[1].split('&')[0] if 'v=' in url else None):
+                    thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+            
+            return title, thumbnail, video_type
+    except Exception as oembed_error:
+        print(f"⚠️ oEmbed failed: {oembed_error}")
+
+    # 2. Try yt-dlp (Fallback)
     try:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'skip_download': True,
+            'nocheckcertificate': True,
+            'ignoreerrors': True,
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -36,30 +61,10 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
     
     except Exception as e:
         print(f"❌ YouTube metadata extraction failed with yt-dlp: {e}")
-        print("⚠️ Attempting fallback extraction...")
+        print("⚠️ Attempting manual fallback extraction...")
         
         try:
-            # Fallback 1: oEmbed API (Most reliable for public videos)
-            import requests
-            try:
-                oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
-                response = requests.get(oembed_url, timeout=5)
-                if response.status_code == 200:
-                    data = response.json()
-                    title = data.get('title')
-                    thumbnail = data.get('thumbnail_url')
-                    video_type = 'short' if '/shorts/' in url else 'long'
-                    print(f"✅ oEmbed extraction successful: {title}")
-                    
-                    # Force maxresdefault if possible, as oEmbed might return hqdefault
-                    if video_id := (url.split('v=')[1].split('&')[0] if 'v=' in url else None):
-                         thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
-                    
-                    return title, thumbnail, video_type
-            except Exception as oembed_error:
-                print(f"⚠️ oEmbed failed: {oembed_error}")
-
-            # Fallback 2: Manual extraction (Regex/Requests)
+            # 3. Manual extraction (Regex/Requests)
             video_id = None
             if 'v=' in url:
                 video_id = url.split('v=')[1].split('&')[0]
@@ -72,7 +77,8 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                 # Construct Thumbnail URL
                 thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
                 
-                # Extract Title via Requests (if oEmbed failed)
+                # Extract Title via Requests
+                import requests
                 import re
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -102,10 +108,13 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
     """
     YouTube 영상에서 랜덤 프레임 추출 (Base64)
     """
-    # ffmpeg 확인
-    import shutil
-    if not shutil.which("ffmpeg"):
-        print("❌ ffmpeg not found! Cannot extract frames.")
+    # ffmpeg 확인 (imageio-ffmpeg 사용)
+    import imageio_ffmpeg
+    ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+    print(f"🎥 ffmpeg path: {ffmpeg_path}")
+    
+    if not ffmpeg_path or not os.path.exists(ffmpeg_path):
+        print("❌ ffmpeg not found via imageio-ffmpeg!")
         return []
 
     # 캐시 확인
@@ -123,17 +132,16 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
         
         # YouTube 영상 다운로드 (최고 화질)
         ydl_opts = {
-            'format': 'best[ext=mp4]/best',  # Force mp4 for better compatibility
+            'format': 'best[ext=mp4]/best',
             'outtmpl': temp_video_path,
             'quiet': True,
             'no_warnings': True,
             'overwrites': True,
-            # IP 차단 회피를 위한 옵션 추가
             'nocheckcertificate': True,
             'ignoreerrors': True,
             'no_check_certificate': True,
             'geo_bypass': True,
-            # 'source_address': '0.0.0.0', # Bind to specific IP if needed
+            'ffmpeg_location': ffmpeg_path,  # Explicitly set ffmpeg path
         }
         
         print(f"🎬 Downloading video from {url} to {temp_video_path}...")
