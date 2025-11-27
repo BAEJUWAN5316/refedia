@@ -39,7 +39,22 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
         print("⚠️ Attempting fallback extraction...")
         
         try:
-            # Fallback: Manual extraction
+            # Fallback 1: oEmbed API (Most reliable for public videos)
+            import requests
+            try:
+                oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+                response = requests.get(oembed_url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    title = data.get('title')
+                    thumbnail = data.get('thumbnail_url')
+                    video_type = 'short' if '/shorts/' in url else 'long'
+                    print(f"✅ oEmbed extraction successful: {title}")
+                    return title, thumbnail, video_type
+            except Exception as oembed_error:
+                print(f"⚠️ oEmbed failed: {oembed_error}")
+
+            # Fallback 2: Manual extraction (Regex/Requests)
             video_id = None
             if 'v=' in url:
                 video_id = url.split('v=')[1].split('&')[0]
@@ -49,13 +64,11 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                 video_id = url.split('shorts/')[1].split('?')[0]
             
             if video_id:
-                # 1. Construct Thumbnail URL
+                # Construct Thumbnail URL
                 thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
                 
-                # 2. Extract Title via Requests
-                import requests
+                # Extract Title via Requests (if oEmbed failed)
                 import re
-                
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
@@ -69,7 +82,7 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                 
                 video_type = 'short' if '/shorts/' in url else 'long'
                 
-                print(f"✅ Fallback extraction successful: {title}")
+                print(f"✅ Manual extraction successful: {title}")
                 return title, thumbnail, video_type
                 
         except Exception as fallback_error:
@@ -83,14 +96,13 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
 def extract_frames(url: str, count: int = 4) -> List[str]:
     """
     YouTube 영상에서 랜덤 프레임 추출 (Base64)
-    
-    Args:
-        url: YouTube URL
-        count: 추출할 프레임 개수
-    
-    Returns:
-        Base64 인코딩된 이미지 리스트
     """
+    # ffmpeg 확인
+    import shutil
+    if not shutil.which("ffmpeg"):
+        print("❌ ffmpeg not found! Cannot extract frames.")
+        return []
+
     # 캐시 확인
     cached = get_cached_frames(url, count)
     if cached:
@@ -111,6 +123,12 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             'quiet': True,
             'no_warnings': True,
             'overwrites': True,
+            # IP 차단 회피를 위한 옵션 추가
+            'nocheckcertificate': True,
+            'ignoreerrors': True,
+            'no_check_certificate': True,
+            'geo_bypass': True,
+            # 'source_address': '0.0.0.0', # Bind to specific IP if needed
         }
         
         print(f"🎬 Downloading video from {url} to {temp_video_path}...")
@@ -171,8 +189,6 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
         print(f"   Detailed error: {error_details}")
         
         # Return empty list but log the error
-        # In a real app, we might want to raise a specific exception that main.py can catch
-        # For now, we return empty list and let main.py handle it (it raises 500 if empty)
         return []
     
     finally:
