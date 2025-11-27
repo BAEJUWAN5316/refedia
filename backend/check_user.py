@@ -4,7 +4,7 @@ from auth import verify_employee_id
 
 def check_user():
     db = SessionLocal()
-    email = "bae@socialmc.co.ke"
+    email = "bae@socialmc.co.kr"
     employee_id = "TH251110"
     
     print(f"🔍 Checking user: {email}")
