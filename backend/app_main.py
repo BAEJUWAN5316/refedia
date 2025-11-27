@@ -14,7 +14,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from database import engine, get_db, Base
-from db_models import User, Category, Post as DBPost
+from db_models import User, Category, Post as DBPost, Favorite
 from models import (
     UserCreate, UserLogin, UserResponse, UserApprove, UserMakeAdmin, UserRevokeAdmin,
     PasswordVerify, Token,
@@ -42,7 +42,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS 설정 (환경 변수 사용)
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS", 
-    "http://localhost:5173,https://www.cloudno7.co.kr"
+    "http://localhost:5173,https://www.cloudno7.co.kr,https://refedia-dev.up.railway.app"
 ).split(",")
 
 app.add_middleware(
@@ -429,16 +429,17 @@ def create_post(
             title = unicodedata.normalize('NFC', title)
         
         # 게시물 생성
+        import json
         new_post = DBPost(
             url=url_str,
             title=title,
             thumbnail=thumbnail,
             platform="youtube",
             video_type=video_type,
-            primary_categories=post_data.primary_categories,
-            secondary_categories=post_data.secondary_categories,
+            primary_category=json.dumps(post_data.primary_categories),
+            secondary_category=json.dumps(post_data.secondary_categories),
             memo=post_data.memo,
-            user_id=current_user.id
+            author_id=current_user.id
         )
         
         db.add(new_post)
@@ -476,10 +477,20 @@ def get_posts(
     search: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    my_posts: bool = False,
+    favorites_only: bool = False,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """게시물 목록 조회 (서버 사이드 필터링 & 페이지네이션)"""
     query = db.query(DBPost)
+    
+    # 0. User Specific Filters
+    if my_posts:
+        query = query.filter(DBPost.author_id == current_user.id)
+        
+    if favorites_only:
+        query = query.join(Favorite).filter(Favorite.user_id == current_user.id)
     
     # 1. Video Type
     if video_type and video_type != 'all':
@@ -553,16 +564,28 @@ def get_posts(
                  .limit(limit)\
                  .all()
     
-    # 작성자 이름 명시적으로 설정
+    # 작성자 이름 및 즐겨찾기 여부 설정
+    # 현재 사용자의 즐겨찾기 목록 조회 (성능 최적화를 위해 한 번에 조회)
+    user_favorites = set()
+    if current_user:
+        favs = db.query(Favorite.post_id).filter(Favorite.user_id == current_user.id).all()
+        user_favorites = {f[0] for f in favs}
+
     for post in posts:
         if post.author:
             post.author_name = post.author.name
+        # 즐겨찾기 여부 설정
+        post.is_favorited = post.id in user_favorites
         
     return posts
 
 
 @app.get("/api/posts/{post_id}", response_model=PostResponse)
-def get_post(post_id: int, db: Session = Depends(get_db)):
+def get_post(
+    post_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """게시물 상세 조회"""
     post = db.query(DBPost).filter(DBPost.id == post_id).first()
     if not post:
@@ -571,6 +594,13 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     # 작성자 이름 설정
     if post.author:
         post.author_name = post.author.name
+        
+    # 즐겨찾기 여부 설정
+    fav = db.query(Favorite).filter(
+        Favorite.user_id == current_user.id, 
+        Favorite.post_id == post_id
+    ).first()
+    post.is_favorited = bool(fav)
         
     return post
 
@@ -728,6 +758,32 @@ if os.path.exists(frontend_dist):
             
         # 그 외에는 index.html 반환 (SPA 라우팅)
         return FileResponse(os.path.join(frontend_dist, "index.html"))
+
+@app.post("/api/posts/{post_id}/favorite")
+def toggle_favorite(
+    post_id: int,
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """게시물 즐겨찾기 토글"""
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+        
+    favorite = db.query(Favorite).filter(
+        Favorite.user_id == current_user.id,
+        Favorite.post_id == post_id
+    ).first()
+    
+    if favorite:
+        db.delete(favorite)
+        db.commit()
+        return {"status": "removed", "is_favorited": False}
+    else:
+        new_favorite = Favorite(user_id=current_user.id, post_id=post_id)
+        db.add(new_favorite)
+        db.commit()
+        return {"status": "added", "is_favorited": True}
 
 if __name__ == "__main__":
     import uvicorn

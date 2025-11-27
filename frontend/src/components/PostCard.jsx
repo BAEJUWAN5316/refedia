@@ -1,6 +1,31 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
+import { API_URL } from '../config';
 
 const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
+    const [isFavorited, setIsFavorited] = useState(post.is_favorited);
+
+    const handleFavorite = async (e) => {
+        e.stopPropagation(); // Prevent card click
+        try {
+            const token = sessionStorage.getItem('token');
+            if (!token) return;
+
+            const response = await fetch(`${API_URL}/api/posts/${post.id}/favorite`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setIsFavorited(data.is_favorited);
+            }
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+        }
+    };
+
     return (
         <div className="post-card" onClick={onClick} ref={ref}>
             <div className="thumbnail-container">
@@ -13,6 +38,13 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                 <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'} video-type-badge`}>
                     {post.video_type === 'long' ? '📺 Long' : '📱 Short'}
                 </span>
+                <button
+                    className={`favorite-btn ${isFavorited ? 'active' : ''}`}
+                    onClick={handleFavorite}
+                    style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 10, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}
+                >
+                    {isFavorited ? '⭐' : '☆'}
+                </button>
             </div>
 
             <div className="post-content">

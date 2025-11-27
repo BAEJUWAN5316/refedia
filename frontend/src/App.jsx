@@ -21,6 +21,7 @@ function App() {
   const [selectedSecondary, setSelectedSecondary] = useState([]);
   const [filterLogic, setFilterLogic] = useState('AND'); // 'AND' or 'OR'
   const [selectedVideoType, setSelectedVideoType] = useState('all');
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'my_posts', 'favorites'
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -74,27 +75,45 @@ function App() {
         video_type: selectedVideoType !== 'all' ? selectedVideoType : '',
         search: searchQuery,
         start_date: startDate,
-        end_date: endDate
+        end_date: endDate,
+        my_posts: viewMode === 'my_posts',
+        favorites_only: viewMode === 'favorites'
       });
 
       selectedPrimary.forEach(id => params.append('primary_category', id));
       selectedSecondary.forEach(id => params.append('secondary_category', id));
 
-      const response = await fetch(`${API_URL}/api/posts?${params.toString()}`);
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/posts?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          // Token expired or invalid
+          handleLogout();
+          return;
+        }
+        throw new Error('Failed to fetch posts');
+      }
+
       const data = await response.json();
 
       if (pageNum === 1) {
-        setPosts(data);
+        setPosts(Array.isArray(data) ? data : []);
       } else {
-        setPosts(prev => [...prev, ...data]);
+        setPosts(prev => [...prev, ...(Array.isArray(data) ? data : [])]);
       }
-      setHasMore(data.length === 20);
+      setHasMore(Array.isArray(data) && data.length === 20);
     } catch (error) {
       console.error('Failed to fetch posts:', error);
+      if (pageNum === 1) setPosts([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery, startDate, endDate]);
+  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery, startDate, endDate, viewMode]);
 
   // Filter Change Effect
   useEffect(() => {
@@ -166,6 +185,8 @@ function App() {
         currentUser={currentUser}
         onLoginClick={() => setShowLogin(true)}
         onLogoutClick={handleLogout}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       <main className="container">

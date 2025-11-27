@@ -58,3 +58,91 @@ Traceback (most recent call last):
 TypeError: argument of type 'HttpUrl' is not iterable
 
 --------------------------------------------------
+Create Post Error time: 2025-11-27 15:56:07.340828
+Error: type object 'Post' has no attribute 'url'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 416, in create_post
+    existing = db.query(DBPost).filter(DBPost.url == url_str).first()
+                                       ^^^^^^^^^^
+AttributeError: type object 'Post' has no attribute 'url'
+
+--------------------------------------------------
+Create Post Error time: 2025-11-27 16:03:47.734301
+Error: 'thumbnail' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 432, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<7 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'thumbnail' is an invalid keyword argument for Post
+
+--------------------------------------------------
+Create Post Error time: 2025-11-27 16:06:11.056530
+Error: 'thumbnail' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 433, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<7 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'thumbnail' is an invalid keyword argument for Post
+
+--------------------------------------------------
+Create Post Error time: 2025-11-27 16:08:01.553911
+Error: 'user_id' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 433, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<7 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'user_id' is an invalid keyword argument for Post
+
+--------------------------------------------------

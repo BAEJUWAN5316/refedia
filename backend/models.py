@@ -95,6 +95,7 @@ class PostResponse(BaseModel):
     author_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    is_favorited: bool = False
 
     class Config:
         from_attributes = True

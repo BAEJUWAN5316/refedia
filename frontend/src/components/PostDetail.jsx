@@ -20,6 +20,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
     const [isSaving, setIsSaving] = useState(false);
     const [isThumbnailCopied, setIsThumbnailCopied] = useState(false);
     const [copiedFrameIdx, setCopiedFrameIdx] = useState(null);
+    const [isFavorited, setIsFavorited] = useState(false);
 
     useEffect(() => {
         fetchPost();
@@ -41,6 +42,7 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
             setEditedSecondary(data.secondary_categories || (data.secondary_category_id ? [data.secondary_category_id] : []));
             setEditedVideoType(data.video_type);
             setFrames(data.frames || []);
+            setIsFavorited(data.is_favorited);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -313,6 +315,28 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
         }
     };
 
+    const handleFavorite = async () => {
+        try {
+            const token = sessionStorage.getItem('token');
+            if (!token) return;
+
+            const response = await fetch(`${API_URL}/api/posts/${postId}/favorite`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setIsFavorited(data.is_favorited);
+                if (onUpdate) onUpdate(); // Update list view as well
+            }
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+        }
+    };
+
     if (loading) return <div className="loading-container"><div className="spinner"></div></div>;
     if (error) return <div className="text-center text-danger">{error}</div>;
     if (!post) return null;
@@ -325,8 +349,19 @@ export default function PostDetail({ postId, currentUser, onClose, onUpdate }) {
                 {/* Header */}
                 <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div style={{ flex: 1 }}>
-                        <h3 className="modal-title" style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                            {isEditing ? 'Edit Reference' : post.title}
+                        <h3 className="modal-title" style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {isEditing ? 'Edit Reference' : (
+                                <>
+                                    {post.title}
+                                    <button
+                                        className={`favorite-btn ${isFavorited ? 'active' : ''}`}
+                                        onClick={handleFavorite}
+                                        title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+                                    >
+                                        {isFavorited ? '⭐' : '☆'}
+                                    </button>
+                                </>
+                            )}
                         </h3>
                         {!isEditing && (
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -8,7 +8,9 @@ export default function Header({
     onCreateClick,
     currentUser,
     onLoginClick,
-    onLogoutClick
+    onLogoutClick,
+    viewMode,
+    onViewModeChange
 }) {
     return (
         <header className="header">
@@ -25,22 +27,47 @@ export default function Header({
 
                 <div className="actions-section">
                     {currentUser ? (
-                        <div className="user-menu">
-                            <button className="btn btn-primary" onClick={onCreateClick}>
-                                + New Reference
-                            </button>
-
-                            {currentUser.is_admin && (
-                                <button className="btn btn-secondary" onClick={onAdminClick} title="Admin Dashboard">
-                                    ⚙️ Admin
+                        <div className="user-menu-wrapper">
+                            <div className="user-menu-top">
+                                <button className="btn btn-primary" onClick={onCreateClick}>
+                                    + New Reference
                                 </button>
-                            )}
 
-                            <div className="user-info">
-                                <span className="user-name">👤 {currentUser.name}</span>
-                                <button className="btn btn-sm btn-secondary" onClick={onLogoutClick}>
-                                    Logout
-                                </button>
+                                {currentUser.is_admin && (
+                                    <button className="btn btn-secondary" onClick={onAdminClick} title="Admin Dashboard">
+                                        ⚙️ Admin
+                                    </button>
+                                )}
+
+                                <div className="user-info">
+                                    <span className="user-name">👤 {currentUser.name}</span>
+                                    <button className="btn btn-sm btn-secondary" onClick={onLogoutClick}>
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="user-menu-bottom">
+                                <div className="nav-pills">
+                                    <button
+                                        className={`nav-pill ${viewMode === 'all' ? 'active' : ''}`}
+                                        onClick={() => onViewModeChange('all')}
+                                    >
+                                        All Refs
+                                    </button>
+                                    <button
+                                        className={`nav-pill ${viewMode === 'my_posts' ? 'active' : ''}`}
+                                        onClick={() => onViewModeChange('my_posts')}
+                                    >
+                                        My Posts
+                                    </button>
+                                    <button
+                                        className={`nav-pill ${viewMode === 'favorites' ? 'active' : ''}`}
+                                        onClick={() => onViewModeChange('favorites')}
+                                    >
+                                        Favorites
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
