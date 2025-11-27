@@ -90,6 +90,47 @@ async def https_redirect_middleware(request: Request, call_next):
 def health_check():
     return {"status": "ok", "message": "Refedia API is running"}
 
+@app.get("/api/debug/system")
+def debug_system(current_user: User = Depends(get_current_admin_user)):
+    """시스템 상태 점검 (관리자 전용)"""
+    import subprocess
+    import shutil
+    
+    result = {
+        "ffmpeg": "Not found",
+        "yt-dlp": "Not found",
+        "python": "Unknown",
+        "connectivity": "Unknown"
+    }
+    
+    # 1. Check ffmpeg
+    if shutil.which("ffmpeg"):
+        try:
+            out = subprocess.check_output(["ffmpeg", "-version"], stderr=subprocess.STDOUT).decode()
+            result["ffmpeg"] = out.split('\n')[0]
+        except Exception as e:
+            result["ffmpeg"] = f"Error: {str(e)}"
+            
+    # 2. Check yt-dlp
+    try:
+        out = subprocess.check_output(["yt-dlp", "--version"], stderr=subprocess.STDOUT).decode()
+        result["yt-dlp"] = out.strip()
+    except Exception as e:
+        result["yt-dlp"] = f"Error: {str(e)}"
+
+    # 3. Check Python
+    import sys
+    result["python"] = sys.version
+
+    # 4. Check Connectivity (Simple curl)
+    try:
+        out = subprocess.check_output(["curl", "-I", "https://www.youtube.com"], stderr=subprocess.STDOUT).decode()
+        result["connectivity"] = "OK" if "200" in out or "301" in out or "302" in out else f"Unexpected: {out[:100]}"
+    except Exception as e:
+        result["connectivity"] = f"Error: {str(e)}"
+
+    return result
+
 # ... (omitted for brevity, will use multi_replace or targeted replace if needed, but here I am replacing the middleware section and the end of file)
 
 # Actually, I should do this in chunks to be safe.
