@@ -32,6 +32,10 @@ from security_logger import log_login_attempt, log_security_event
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
 
+
+
+app = FastAPI(title="Refedia API", version="1.0.0")
+
 # Startup Event: Create Admin User if not exists
 @app.on_event("startup")
 def startup_event():
@@ -70,8 +74,6 @@ def startup_event():
         print(f"❌ Failed to create initial admin user: {e}")
     finally:
         db.close()
-
-app = FastAPI(title="Refedia API", version="1.0.0")
 
 # Rate Limiter 설정
 limiter = Limiter(key_func=get_remote_address)
