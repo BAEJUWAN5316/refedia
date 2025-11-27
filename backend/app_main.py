@@ -564,17 +564,17 @@ def get_posts(
     if primary_category:
         if filter_logic == 'AND':
             for cat_id in primary_category:
-                query = query.filter(DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%'))
+                query = query.filter(DBPost.primary_category.like(f'%"{cat_id}"%'))
         else: # OR
-            conditions = [DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in primary_category]
+            conditions = [DBPost.primary_category.like(f'%"{cat_id}"%') for cat_id in primary_category]
             query = query.filter(or_(*conditions))
 
     if secondary_category:
         if filter_logic == 'AND':
             for cat_id in secondary_category:
-                query = query.filter(DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%'))
+                query = query.filter(DBPost.secondary_category.like(f'%"{cat_id}"%'))
         else: # OR
-            conditions = [DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in secondary_category]
+            conditions = [DBPost.secondary_category.like(f'%"{cat_id}"%') for cat_id in secondary_category]
             query = query.filter(or_(*conditions))
         
     # Pagination
