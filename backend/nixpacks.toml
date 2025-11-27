@@ -1,13 +1,14 @@
 [phases.setup]
+# python3 -> python311로 변경 (더 안전함)
+# ffmpeg는 nix와 apt 양쪽에서 설치 시도 (확실함)
 nixPkgs = ["python311", "ffmpeg"]
+aptPkgs = ["ffmpeg"]
 
 [phases.install]
-# 수정됨: backend/requirements.txt 가 아니라 그냥 requirements.txt 입니다.
 cmds = ["python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt"]
 
 [phases.build]
 cmds = []
 
 [start]
-# 수정됨: cd backend 명령어를 제거했습니다.
 cmd = "python init_db_and_admin.py && python -m uvicorn app_main:app --host 0.0.0.0 --port $PORT"
