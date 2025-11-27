@@ -91,7 +91,7 @@ def health_check():
     return {"status": "ok", "message": "Refedia API is running"}
 
 @app.get("/api/debug/system")
-def debug_system(current_user: User = Depends(get_current_admin_user)):
+def debug_system():
     """시스템 상태 점검 (관리자 전용)"""
     import subprocess
     import shutil
