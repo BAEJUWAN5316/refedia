@@ -602,30 +602,44 @@ def get_posts(
                      .offset(skip)\
                      .limit(limit)\
                      .all()
+        print(f"DEBUG: Fetched {len(posts)} posts")
     
     # 작성자 이름 및 좋아요 여부 설정
-    for post in posts:
-        if post.author:
-            post.author_name = post.author.name
+    try:
+        for post in posts:
+            if post.author:
+                post.author_name = post.author.name
+        print("DEBUG: Author names set")
             
-    # 좋아요 여부 확인
-    if current_user:
-        from db_models import Favorite
-        # 최적화: 한 번의 쿼리로 현재 페이지의 모든 포스트에 대한 좋아요 여부 가져오기
-        post_ids = [p.id for p in posts]
-        favorites = db.query(Favorite).filter(
-            Favorite.user_id == current_user.id,
-            Favorite.post_id.in_(post_ids)
-        ).all()
-        favorited_post_ids = {f.post_id for f in favorites}
-        
-        for post in posts:
-            post.is_favorited = post.id in favorited_post_ids
-    else:
-        for post in posts:
-            post.is_favorited = False
-        
-    return posts
+        # 좋아요 여부 확인
+        if current_user:
+            print(f"DEBUG: Checking favorites for user {current_user.id}")
+            from db_models import Favorite
+            # 최적화: 한 번의 쿼리로 현재 페이지의 모든 포스트에 대한 좋아요 여부 가져오기
+            post_ids = [p.id for p in posts]
+            if post_ids:
+                favorites = db.query(Favorite).filter(
+                    Favorite.user_id == current_user.id,
+                    Favorite.post_id.in_(post_ids)
+                ).all()
+                favorited_post_ids = {f.post_id for f in favorites}
+                
+                for post in posts:
+                    post.is_favorited = post.id in favorited_post_ids
+            else:
+                print("DEBUG: No posts to check favorites for")
+            print("DEBUG: Favorites checked")
+        else:
+            for post in posts:
+                post.is_favorited = False
+            print("DEBUG: Anonymous user, favorites skipped")
+            
+        return posts
+    except Exception as e:
+        import traceback
+        print(f"❌ Error in get_posts processing: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 @app.get("/api/posts/{post_id}", response_model=PostResponse)
