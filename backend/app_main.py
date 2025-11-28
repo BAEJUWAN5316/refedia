@@ -971,9 +971,21 @@ def debug_db(
                  result["favorites_migration_attempted"] = True
                  try:
                      with engine.connect() as conn:
-                         conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL PRIMARY KEY"))
-                         conn.commit()
-                     result["favorites_migration_success"] = True
+                         # Try adding as PK first
+                         try:
+                            conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL PRIMARY KEY"))
+                            conn.commit()
+                            result["favorites_migration_success"] = True
+                            print("✅ Added id column to favorites (PK)")
+                         except Exception as pk_err:
+                            print(f"⚠️ Failed to add id as PK: {pk_err}")
+                            conn.rollback()
+                            # Fallback: Add as regular column (if PK already exists)
+                            conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL"))
+                            conn.commit()
+                            result["favorites_migration_success"] = True
+                            print("✅ Added id column to favorites (Non-PK)")
+                            
                      # Refresh columns
                      result["favorites_columns"] = [col['name'] for col in inspector.get_columns('favorites')]
                  except Exception as e:
