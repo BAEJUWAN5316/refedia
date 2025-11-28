@@ -64,6 +64,7 @@ dist-ssr/
 # Backend temporary files
 backend/images/
 backend/*.log
+backend/logs/
 
 # Railway
 .railway/

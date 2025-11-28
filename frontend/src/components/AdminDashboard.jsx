@@ -14,7 +14,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
 
     const fetchUsers = async () => {
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -33,7 +33,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
         // Wait, "Grant admin privileges" for approval is confusing. Let's change it to "Approve this user?".
         if (!confirm('Approve this user?')) return;
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/admin/users/${userId}/approve`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -47,7 +47,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
     const makeAdmin = async (userId) => {
         if (!confirm('Promote this user to Admin?')) return;
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/admin/users/${userId}/make-admin`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -61,7 +61,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
     const revokeAdmin = async (userId) => {
         if (!confirm('Revoke admin privileges from this user?')) return;
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/admin/users/${userId}/revoke-admin`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -75,7 +75,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
     const deleteUser = async (userId) => {
         if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -91,7 +91,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
         if (!newCategory.trim()) return;
 
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/categories`, {
                 method: 'POST',
                 headers: {
@@ -116,7 +116,7 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
     const deleteCategory = async (categoryId) => {
         if (!confirm('Delete this category?')) return;
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/categories/${categoryId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
