@@ -44,3 +44,19 @@ class Post(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     author = relationship("User", back_populates="posts")
+    view_count = Column(Integer, default=0)
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    post_id = Column(Integer, ForeignKey("posts.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="favorites")
+    post = relationship("Post", back_populates="favorites")
+
+User.favorites = relationship("Favorite", back_populates="user")
+Post.favorites = relationship("Favorite", back_populates="post")

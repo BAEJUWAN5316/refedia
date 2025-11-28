@@ -13,7 +13,7 @@ from db_models import User
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT Bearer 토큰
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def hash_employee_id(employee_id: str) -> str:
@@ -41,7 +41,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
     """현재 로그인한 사용자 가져오기"""
@@ -50,6 +50,9 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not credentials:
+        raise credentials_exception
     
     try:
         token = credentials.credentials
@@ -85,3 +88,34 @@ def get_current_admin_user(current_user: User = Depends(get_current_user)) -> Us
             detail="Admin privileges required"
         )
     return current_user
+
+
+def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """로그인한 경우 사용자 반환, 아니면 None"""
+    if not credentials:
+        print("DEBUG: No credentials provided")
+        return None
+        
+    try:
+        token = credentials.credentials
+        print(f"DEBUG: Token received: {token[:10]}...")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        print(f"DEBUG: Email from token: {email}")
+        if email is None:
+            return None
+    except JWTError as e:
+        print(f"DEBUG: JWT Error: {e}")
+        return None
+    except Exception as e:
+        print(f"DEBUG: Unexpected Error in auth: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+    
+    user = db.query(User).filter(User.email == email).first()
+    print(f"DEBUG: User found: {user}")
+    return user

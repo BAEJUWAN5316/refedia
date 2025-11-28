@@ -1,4 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, Response
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 from sqlalchemy import or_, String
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,7 +28,7 @@ from models import (
 )
 from auth import (
     hash_employee_id, verify_employee_id, create_access_token,
-    get_current_user, get_current_approved_user, get_current_admin_user,
+    get_current_user, get_current_approved_user, get_current_admin_user, get_current_user_optional,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from youtube_service import extract_youtube_metadata, extract_frames, validate_youtube_url
@@ -441,6 +446,25 @@ def create_post(
             user_id=current_user.id
         )
         
+        # 초기 조회수 가져오기
+        try:
+            vid = None
+            if 'v=' in url_str:
+                vid = url_str.split('v=')[1].split('&')[0]
+            elif 'youtu.be/' in url_str:
+                vid = url_str.split('youtu.be/')[1].split('?')[0]
+            elif 'shorts/' in url_str:
+                vid = url_str.split('shorts/')[1].split('?')[0]
+                
+            if vid:
+                from youtube_service import update_view_counts_batch
+                view_counts = update_view_counts_batch([vid])
+                if vid in view_counts:
+                    new_post.view_count = view_counts[vid]
+                    print(f"✅ Initial view count fetched: {new_post.view_count}")
+        except Exception as e:
+            print(f"⚠️ Failed to fetch initial view count: {e}")
+        
         db.add(new_post)
         db.commit()
         db.refresh(new_post)
@@ -476,11 +500,29 @@ def get_posts(
     search: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    my_posts: bool = False,
+    favorites_only: bool = False,
+    seed: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """게시물 목록 조회 (서버 사이드 필터링 & 페이지네이션)"""
     query = db.query(DBPost)
     
+    # 0. My Posts & Favorites Filter
+    if my_posts:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required for my_posts")
+        query = query.filter(DBPost.user_id == current_user.id)
+        
+    if favorites_only:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required for favorites_only")
+        # Favorite 모델이 필요함. db_models.py에 있는지 확인 필요.
+        # 일단 Favorite 테이블과 조인하여 필터링
+        from db_models import Favorite
+        query = query.join(Favorite).filter(Favorite.user_id == current_user.id)
+
     # 1. Video Type
     if video_type and video_type != 'all':
         query = query.filter(DBPost.video_type == video_type)
@@ -491,12 +533,10 @@ def get_posts(
         # Normalize search term to both NFC and NFD to cover all bases
         search_nfc = unicodedata.normalize('NFC', search)
         search_nfd = unicodedata.normalize('NFD', search)
-        print(f"DEBUG: Search term='{search}', NFC='{search_nfc}', NFD='{search_nfd}'")
         
         search_pattern_nfc = f"%{search_nfc}%"
         search_pattern_nfd = f"%{search_nfd}%"
         
-        # DBPost에는 description 컬럼이 없으므로 title과 memo만 검색
         query = query.filter(
             or_(
                 DBPost.title.ilike(search_pattern_nfc),
@@ -508,27 +548,20 @@ def get_posts(
     
     # 3. Date Range Filter
     if start_date:
-        # start_date format: YYYY-MM-DD
-        # created_at is DateTime, so compare with start of day
         try:
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             query = query.filter(DBPost.created_at >= start_dt)
         except ValueError:
-            pass # Invalid date format, ignore
+            pass
 
     if end_date:
-        # end_date format: YYYY-MM-DD
-        # To include the end date fully, compare < end_date + 1 day
         try:
             end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
             query = query.filter(DBPost.created_at < end_dt)
         except ValueError:
-            pass # Invalid date format, ignore
+            pass
     
     # 4. Category Filter (JSON List Filtering)
-    # SQLite/Generic: Cast JSON to String and use LIKE '%"cat_id"%'
-    # This assumes JSON is stored as ["id1", "id2"] with double quotes.
-    
     if primary_category:
         if filter_logic == 'AND':
             for cat_id in primary_category:
@@ -545,24 +578,62 @@ def get_posts(
             conditions = [DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in secondary_category]
             query = query.filter(or_(*conditions))
         
-    # Pagination
-    skip = (page - 1) * limit
-    posts = query.options(joinedload(DBPost.author))\
-                 .order_by(DBPost.created_at.desc())\
-                 .offset(skip)\
-                 .limit(limit)\
-                 .all()
+    # Pagination & Sorting
+    # Mix (Random Shuffle)
+    if seed is not None:
+        import random
+        # 시드 기반 랜덤 정렬을 위해 전체 데이터를 가져온 후 메모리에서 섞거나,
+        # DB 레벨에서 랜덤 정렬을 해야 함.
+        # SQLite: ORDER BY RANDOM() - 시드 지원 안함
+        # Python 메모리 정렬 방식 사용 (데이터가 많지 않다고 가정)
+        posts = query.options(joinedload(DBPost.author)).all()
+        random.seed(seed)
+        random.shuffle(posts)
+        
+        # 페이지네이션 적용
+        start = (page - 1) * limit
+        end = start + limit
+        posts = posts[start:end]
+    else:
+        # 기본 정렬 (최신순)
+        skip = (page - 1) * limit
+        posts = query.options(joinedload(DBPost.author))\
+                     .order_by(DBPost.created_at.desc())\
+                     .offset(skip)\
+                     .limit(limit)\
+                     .all()
     
-    # 작성자 이름 명시적으로 설정
+    # 작성자 이름 및 좋아요 여부 설정
     for post in posts:
         if post.author:
             post.author_name = post.author.name
+            
+    # 좋아요 여부 확인
+    if current_user:
+        from db_models import Favorite
+        # 최적화: 한 번의 쿼리로 현재 페이지의 모든 포스트에 대한 좋아요 여부 가져오기
+        post_ids = [p.id for p in posts]
+        favorites = db.query(Favorite).filter(
+            Favorite.user_id == current_user.id,
+            Favorite.post_id.in_(post_ids)
+        ).all()
+        favorited_post_ids = {f.post_id for f in favorites}
+        
+        for post in posts:
+            post.is_favorited = post.id in favorited_post_ids
+    else:
+        for post in posts:
+            post.is_favorited = False
         
     return posts
 
 
 @app.get("/api/posts/{post_id}", response_model=PostResponse)
-def get_post(post_id: int, db: Session = Depends(get_db)):
+def get_post(
+    post_id: int, 
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """게시물 상세 조회"""
     post = db.query(DBPost).filter(DBPost.id == post_id).first()
     if not post:
@@ -572,7 +643,52 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     if post.author:
         post.author_name = post.author.name
         
+    # 좋아요 여부 확인
+    if current_user:
+        from db_models import Favorite
+        is_favorited = db.query(Favorite).filter(
+            Favorite.user_id == current_user.id,
+            Favorite.post_id == post.id
+        ).first() is not None
+        post.is_favorited = is_favorited
+    else:
+        post.is_favorited = False
+        
+    # YouTube 조회수 동기화 제거 (성능 이슈)
+    # 관리자가 '새로고침' 버튼을 눌렀을 때만 업데이트됨
+        
     return post
+
+
+@app.post("/api/posts/{post_id}/favorite")
+def toggle_favorite(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """게시물 좋아요 토글"""
+    from db_models import Favorite
+    
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+        
+    favorite = db.query(Favorite).filter(
+        Favorite.user_id == current_user.id,
+        Favorite.post_id == post_id
+    ).first()
+    
+    if favorite:
+        db.delete(favorite)
+        is_favorited = False
+    else:
+        new_favorite = Favorite(user_id=current_user.id, post_id=post_id)
+        db.add(new_favorite)
+        is_favorited = True
+        
+    db.commit()
+    
+    return {"is_favorited": is_favorited}
 
 
 @app.put("/api/posts/{post_id}")
@@ -601,6 +717,8 @@ def update_post(
             post.secondary_categories = post_data.secondary_categories
         if post_data.memo is not None:
             post.memo = post_data.memo
+        if post_data.video_type is not None:
+            post.video_type = post_data.video_type
         
         db.commit()
         db.refresh(post)
@@ -640,6 +758,54 @@ def delete_post(
     db.commit()
     
     return {"status": "deleted", "post_id": post_id}
+
+@app.post("/api/admin/update-views")
+def update_all_views(
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """관리자용: 모든 게시물의 조회수 강제 업데이트"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    
+    try:
+        posts = db.query(DBPost).all()
+        video_ids = []
+        post_map = {}
+        
+        for post in posts:
+            vid = None
+            if 'v=' in post.url:
+                vid = post.url.split('v=')[1].split('&')[0]
+            elif 'youtu.be/' in post.url:
+                vid = post.url.split('youtu.be/')[1].split('?')[0]
+            elif 'shorts/' in post.url:
+                vid = post.url.split('shorts/')[1].split('?')[0]
+                
+            if vid:
+                video_ids.append(vid)
+                post_map[vid] = post
+        
+        updated_count = 0
+        if video_ids:
+            from youtube_service import update_view_counts_batch
+            # 50개씩 배치 처리는 youtube_service 내부에서 함
+            view_counts = update_view_counts_batch(video_ids)
+            
+            for vid, count in view_counts.items():
+                if vid in post_map:
+                    post = post_map[vid]
+                    if post.view_count != count:
+                        post.view_count = count
+                        updated_count += 1
+            
+            db.commit()
+            
+        return {"status": "success", "updated_count": updated_count, "total_posts": len(posts)}
+        
+    except Exception as e:
+        print(f"❌ Admin view update failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Image Download Proxy
@@ -728,6 +894,76 @@ if os.path.exists(frontend_dist):
             
         # 그 외에는 index.html 반환 (SPA 라우팅)
         return FileResponse(os.path.join(frontend_dist, "index.html"))
+
+# Scheduler for Daily View Count Update
+import threading
+import time
+from datetime import datetime, timedelta
+
+def run_daily_scheduler():
+    """매일 아침 9시에 조회수 업데이트 실행"""
+    print("⏰ Daily scheduler started")
+    while True:
+        now = datetime.now()
+        # 다음 9시 계산
+        next_run = now.replace(hour=9, minute=0, second=0, microsecond=0)
+        if now >= next_run:
+            next_run += timedelta(days=1)
+            
+        wait_seconds = (next_run - now).total_seconds()
+        print(f"⏳ Next view count update in {wait_seconds/3600:.1f} hours ({next_run})")
+        
+        time.sleep(wait_seconds)
+        
+        try:
+            print("🔄 Running daily view count update...")
+            # DB 세션 생성 및 업데이트 로직 실행
+            # 주의: 여기서는 app context 외부이므로 새로운 세션을 만들어야 함
+            from database import SessionLocal
+            from youtube_service import update_view_counts_batch
+            
+            db = SessionLocal()
+            try:
+                posts = db.query(DBPost).all()
+                video_ids = []
+                post_map = {}
+                
+                for post in posts:
+                    vid = None
+                    if 'v=' in post.url:
+                        vid = post.url.split('v=')[1].split('&')[0]
+                    elif 'youtu.be/' in post.url:
+                        vid = post.url.split('youtu.be/')[1].split('?')[0]
+                    elif 'shorts/' in post.url:
+                        vid = post.url.split('shorts/')[1].split('?')[0]
+                        
+                    if vid:
+                        video_ids.append(vid)
+                        post_map[vid] = post
+                
+                if video_ids:
+                    view_counts = update_view_counts_batch(video_ids)
+                    updated_count = 0
+                    for vid, count in view_counts.items():
+                        if vid in post_map:
+                            post = post_map[vid]
+                            if post.view_count != count:
+                                post.view_count = count
+                                updated_count += 1
+                    
+                    db.commit()
+                    print(f"✅ Daily update completed: {updated_count} posts updated")
+            finally:
+                db.close()
+                
+        except Exception as e:
+            print(f"❌ Daily update failed: {e}")
+
+@app.on_event("startup")
+async def startup_event():
+    # 백그라운드 스레드로 스케줄러 실행
+    thread = threading.Thread(target=run_daily_scheduler, daemon=True)
+    thread.start()
 
 if __name__ == "__main__":
     import uvicorn
