@@ -45,7 +45,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
         setError('');
 
         try {
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/posts`, {
                 method: 'POST',
                 headers: {
@@ -78,7 +78,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal" style={{ maxWidth: '600px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>New Reference</h3>
                     <button className="btn btn-icon" onClick={onClose} style={{ fontSize: '1.2rem' }}>❌</button>
                 </div>

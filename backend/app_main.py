@@ -498,6 +498,7 @@ def get_posts(
     search: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    seed: Optional[int] = None,
     my_posts: bool = False,
     favorites_only: bool = False,
     current_user: User = Depends(get_current_user),
@@ -579,11 +580,39 @@ def get_posts(
         
     # Pagination
     skip = (page - 1) * limit
-    posts = query.options(joinedload(DBPost.author))\
-                 .order_by(DBPost.created_at.desc())\
-                 .offset(skip)\
-                 .limit(limit)\
-                 .all()
+    
+    if seed is not None:
+        # Seed-based Random Shuffle (Deterministic for same seed)
+        # 1. Fetch ALL matching IDs
+        all_ids = [id[0] for id in query.with_entities(DBPost.id).order_by(DBPost.created_at.desc()).all()]
+        
+        # 2. Shuffle IDs with seed
+        import random
+        random.Random(seed).shuffle(all_ids)
+        
+        # 3. Slice IDs for current page
+        paged_ids = all_ids[skip : skip + limit]
+        
+        # 4. Fetch posts for paged_ids
+        if not paged_ids:
+            posts = []
+        else:
+            # Fetch posts (order is not guaranteed by IN clause)
+            unsorted_posts = query.options(joinedload(DBPost.author))\
+                                  .filter(DBPost.id.in_(paged_ids))\
+                                  .all()
+            
+            # 5. Sort posts to match paged_ids order
+            posts_map = {post.id: post for post in unsorted_posts}
+            posts = [posts_map[id] for id in paged_ids if id in posts_map]
+            
+    else:
+        # Standard Pagination (Created At Desc)
+        posts = query.options(joinedload(DBPost.author))\
+                     .order_by(DBPost.created_at.desc())\
+                     .offset(skip)\
+                     .limit(limit)\
+                     .all()
     
     # 작성자 이름 및 즐겨찾기 여부 설정
     # 현재 사용자의 즐겨찾기 목록 조회 (성능 최적화를 위해 한 번에 조회)
@@ -702,7 +731,8 @@ def delete_post(
 ALLOWED_IMAGE_DOMAINS = [
     "i.ytimg.com",
     "img.youtube.com",
-    "i9.ytimg.com"
+    "i9.ytimg.com",
+    "yt3.ggpht.com"
 ]
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB

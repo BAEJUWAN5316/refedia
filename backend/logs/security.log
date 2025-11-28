@@ -96,3 +96,10 @@
 2025-11-27 16:23:03 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
 2025-11-27 16:23:22 - INFO - Login SUCCESS: test1@test.com from 127.0.0.1
 2025-11-27 16:24:01 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 17:55:01 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 17:55:20 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 17:56:48 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 17:57:47 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 18:06:41 - INFO - Login SUCCESS: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 18:08:22 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1
+2025-11-27 18:17:13 - WARNING - Login FAILED: bae@socialmc.co.kr from 127.0.0.1

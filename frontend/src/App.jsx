@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
-import CategoryFilter from './components/CategoryFilter';
-import PostCard from './components/PostCard';
+import Feed from './components/Feed';
 import PostDetail from './components/PostDetail';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
@@ -12,41 +12,25 @@ import './index.css';
 import { API_URL } from './config';
 
 function App() {
-  // Data State
-  const [posts, setPosts] = useState([]);
-  const [categories, setCategories] = useState({ primary: [], secondary: [] });
-
-  // Filter State
-  const [selectedPrimary, setSelectedPrimary] = useState([]);
-  const [selectedSecondary, setSelectedSecondary] = useState([]);
-  const [filterLogic, setFilterLogic] = useState('AND'); // 'AND' or 'OR'
-  const [selectedVideoType, setSelectedVideoType] = useState('all');
-  const [viewMode, setViewMode] = useState('all'); // 'all', 'my_posts', 'favorites'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
   // Auth State
   const [currentUser, setCurrentUser] = useState(null);
 
-  // UI State
+  // UI State - Global
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [showPostCreate, setShowPostCreate] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  // Pagination State
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const observer = useRef();
+  // Feed State (Lifted up to share with Header)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'my_posts', 'favorites'
+  const [categories, setCategories] = useState({ primary: [], secondary: [] });
 
   // Initial Auth Check
   useEffect(() => {
     const checkAuth = async () => {
-      const token = sessionStorage.getItem('token');
-      const userStr = sessionStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
 
       if (token && userStr) {
         setCurrentUser(JSON.parse(userStr));
@@ -57,90 +41,12 @@ function App() {
     checkAuth();
   }, []);
 
-  // Fetch Data only when authenticated
+  // Fetch Categories (Global for AdminDashboard etc)
   useEffect(() => {
     if (currentUser) {
       fetchCategories();
     }
   }, [currentUser]);
-
-  const fetchPosts = useCallback(async (pageNum) => {
-    if (!currentUser) return;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: pageNum,
-        limit: 20,
-        filter_logic: filterLogic,
-        video_type: selectedVideoType !== 'all' ? selectedVideoType : '',
-        search: searchQuery,
-        start_date: startDate,
-        end_date: endDate,
-        my_posts: viewMode === 'my_posts',
-        favorites_only: viewMode === 'favorites'
-      });
-
-      selectedPrimary.forEach(id => params.append('primary_category', id));
-      selectedSecondary.forEach(id => params.append('secondary_category', id));
-
-      const token = sessionStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/posts?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          // Token expired or invalid
-          handleLogout();
-          return;
-        }
-        throw new Error('Failed to fetch posts');
-      }
-
-      const data = await response.json();
-
-      if (pageNum === 1) {
-        setPosts(Array.isArray(data) ? data : []);
-      } else {
-        setPosts(prev => [...prev, ...(Array.isArray(data) ? data : [])]);
-      }
-      setHasMore(Array.isArray(data) && data.length === 20);
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
-      if (pageNum === 1) setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery, startDate, endDate, viewMode]);
-
-  // Filter Change Effect
-  useEffect(() => {
-    if (currentUser) {
-      setPage(1);
-      fetchPosts(1);
-    }
-  }, [fetchPosts]);
-
-  // Page Change Effect
-  useEffect(() => {
-    if (currentUser && page > 1) {
-      fetchPosts(page);
-    }
-  }, [page, fetchPosts, currentUser]);
-
-  // Infinite Scroll Ref
-  const lastPostElementRef = useCallback(node => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage(prevPage => prevPage + 1);
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [loading, hasMore]);
 
   const fetchCategories = async () => {
     try {
@@ -153,174 +59,117 @@ function App() {
   };
 
   const handleLogin = (user, token) => {
-    sessionStorage.setItem('token', token);
-    sessionStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     setCurrentUser(user);
     setShowLogin(false);
     setShowSignup(false);
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setCurrentUser(null);
     setShowAdminDashboard(false);
     setShowPostCreate(false);
-    setSelectedPost(null);
-    setShowLogin(true); // Show login modal immediately after logout
-  };
-
-  const getCategoryName = (id, type) => {
-    const list = type === 'primary' ? categories.primary : categories.secondary;
-    const cat = list.find(c => c.id === id);
-    return cat ? cat.name : '';
+    setShowLogin(true);
   };
 
   return (
-    <div className="app">
-      <Header
-        onSearch={setSearchQuery}
-        onAdminClick={() => setShowAdminDashboard(true)}
-        onCreateClick={() => setShowPostCreate(true)}
-        currentUser={currentUser}
-        onLoginClick={() => setShowLogin(true)}
-        onLogoutClick={handleLogout}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+    <Router>
+      <div className="app">
+        <Header
+          onSearch={setSearchQuery}
+          onAdminClick={() => setShowAdminDashboard(true)}
+          onCreateClick={() => setShowPostCreate(true)}
+          currentUser={currentUser}
+          onLoginClick={() => setShowLogin(true)}
+          onLogoutClick={handleLogout}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
 
-      <main className="container">
-        {currentUser ? (
-          <>
-            <CategoryFilter
-              categories={categories}
-              selectedPrimary={selectedPrimary}
-              onSelectPrimary={setSelectedPrimary}
-              selectedSecondary={selectedSecondary}
-              onSelectSecondary={setSelectedSecondary}
-              filterLogic={filterLogic}
-              onToggleLogic={setFilterLogic}
-              selectedVideoType={selectedVideoType}
-              onSelectVideoType={setSelectedVideoType}
-              startDate={startDate}
-              onStartDateChange={setStartDate}
-              endDate={endDate}
-              onEndDateChange={setEndDate}
-            />
+        <main className="container">
+          {currentUser ? (
+            <Routes>
+              <Route path="/" element={
+                <Feed
+                  currentUser={currentUser}
+                  viewMode={viewMode}
+                  searchQuery={searchQuery}
+                  onSearch={setSearchQuery}
+                />
+              } />
+              <Route path="/post/:postId" element={
+                <PostDetail
+                  currentUser={currentUser}
+                  onClose={undefined} // Let PostDetail handle navigation to '/'
+                  onUpdate={() => { }} // No-op for standalone page for now, or reload
+                />
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          ) : (
+            <div className="text-center" style={{ padding: '4rem', color: 'var(--text-secondary)' }}>
+              <h3>Please login to view references</h3>
+            </div>
+          )}
+        </main>
 
-            {loading && page === 1 ? (
-              <div className="loading-container">
-                <div className="spinner"></div>
-              </div>
-            ) : (
-              <div className="grid">
-                {posts.map((post, index) => {
-                  if (posts.length === index + 1) {
-                    return (
-                      <PostCard
-                        ref={lastPostElementRef}
-                        key={post.id}
-                        post={post}
-                        onClick={() => setSelectedPost(post)}
-                        getCategoryName={getCategoryName}
-                      />
-                    );
-                  } else {
-                    return (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        onClick={() => setSelectedPost(post)}
-                        getCategoryName={getCategoryName}
-                      />
-                    );
-                  }
-                })}
-              </div>
-            )}
-            {loading && page > 1 && (
-              <div className="loading-container" style={{ height: '100px' }}>
-                <div className="spinner"></div>
-              </div>
-            )}
+        {/* Modals */}
+        {showAdminDashboard && (
+          <AdminDashboard
+            onClose={() => setShowAdminDashboard(false)}
+            categories={categories}
+            onCategoriesChanged={fetchCategories}
+            currentUser={currentUser}
+          />
+        )}
 
-            {posts.length === 0 && !loading && (
-              <div className="text-center" style={{ padding: '4rem', color: 'var(--text-secondary)' }}>
-                <h3>No references found</h3>
-                <p>Try adjusting your filters or search query</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center" style={{ padding: '4rem', color: 'var(--text-secondary)' }}>
-            <h3>Please login to view references</h3>
+        {showPostCreate && (
+          <PostCreate
+            onClose={() => setShowPostCreate(false)}
+            onPostCreated={() => {
+              // If on feed, trigger refresh? Feed handles its own fetch on mount/update.
+              // Maybe we need a global refresh trigger or just let user refresh.
+              // For now, simple close.
+              window.location.reload(); // Simple way to refresh feed
+            }}
+          />
+        )}
+
+        {showLogin && (
+          <div className="modal-overlay">
+            <div className="modal-content-wrapper">
+              <Login
+                onLogin={handleLogin}
+                onSwitchToSignup={() => {
+                  setShowLogin(false);
+                  setShowSignup(true);
+                }}
+              />
+              {!currentUser && (
+                <button className="modal-close-btn" onClick={() => setShowLogin(false)} style={{ display: 'none' }}>❌</button>
+              )}
+            </div>
           </div>
         )}
-      </main>
 
-      {/* Modals */}
-      {showAdminDashboard && (
-        <AdminDashboard
-          onClose={() => setShowAdminDashboard(false)}
-          categories={categories}
-          onCategoriesChanged={fetchCategories}
-          currentUser={currentUser}
-        />
-      )}
-
-      {showPostCreate && (
-        <PostCreate
-          onClose={() => setShowPostCreate(false)}
-          onPostCreated={() => {
-            fetchPosts(1);
-            setPage(1);
-          }}
-        />
-      )}
-
-      {selectedPost && (
-        <PostDetail
-          postId={selectedPost.id}
-          currentUser={currentUser}
-          onClose={() => setSelectedPost(null)}
-          onUpdate={fetchPosts}
-        />
-      )}
-
-      {showLogin && (
-        <div className="modal-overlay">
-          <div className="modal-content-wrapper">
-            <Login
-              onLogin={handleLogin}
-              onSwitchToSignup={() => {
-                setShowLogin(false);
-                setShowSignup(true);
-              }}
-            />
-            {!currentUser && (
-              // Only show close button if user is already logged in (optional, but here we force login)
-              // Actually, if we force login, we might not want a close button if they are not logged in.
-              // But let's keep it simple.
-              <button className="modal-close-btn" onClick={() => setShowLogin(false)} style={{ display: 'none' }}>❌</button>
-            )}
+        {showSignup && (
+          <div className="modal-overlay">
+            <div className="modal-content-wrapper">
+              <Signup
+                onSwitchToLogin={() => {
+                  setShowSignup(false);
+                  setShowLogin(true);
+                }}
+              />
+              <button className="modal-close-btn" onClick={() => setShowSignup(false)}>❌</button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {showSignup && (
-        <div className="modal-overlay">
-          <div className="modal-content-wrapper">
-            <Signup
-              onSwitchToLogin={() => {
-                setShowSignup(false);
-                setShowLogin(true);
-              }}
-            />
-            <button className="modal-close-btn" onClick={() => setShowSignup(false)}>❌</button>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Router>
   );
 }
 

@@ -59,6 +59,22 @@ export default function CategoryFilter({
                     >
                         OR
                     </button>
+                    <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={props.onMix}
+                        style={{ marginLeft: '0.5rem' }}
+                        title="Shuffle Posts"
+                    >
+                        🔀 Mix
+                    </button>
+                    <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={props.onResetSort}
+                        style={{ marginLeft: '0.5rem' }}
+                        title="Sort by Date"
+                    >
+                        🕒 Latest
+                    </button>
                 </div>
             </div>
 
@@ -81,6 +97,16 @@ export default function CategoryFilter({
                         value={props.endDate || ''}
                         onChange={(e) => props.onEndDateChange(e.target.value)}
                     />
+                    <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                            props.onStartDateChange('');
+                            props.onEndDateChange('');
+                        }}
+                        style={{ marginLeft: '0.5rem' }}
+                    >
+                        RESET
+                    </button>
                 </div>
             </div>
 
