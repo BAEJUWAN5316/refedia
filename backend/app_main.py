@@ -37,6 +37,31 @@ from security_logger import log_login_attempt, log_security_event
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
 
+def check_and_migrate_db():
+    """DB 스키마 마이그레이션 (컬럼 추가 등)"""
+    from sqlalchemy import text, inspect
+    
+    inspector = inspect(engine)
+    columns = [col['name'] for col in inspector.get_columns('posts')]
+    
+    with engine.connect() as conn:
+        # 1. view_count 컬럼 추가
+        if 'view_count' not in columns:
+            print("🔄 Migrating: Adding view_count column to posts table...")
+            try:
+                # SQLite & Postgres compatible
+                conn.execute(text("ALTER TABLE posts ADD COLUMN view_count INTEGER DEFAULT 0"))
+                conn.commit() # 커밋 필요
+                print("✅ Added view_count column")
+            except Exception as e:
+                print(f"⚠️ Failed to add view_count column: {e}")
+
+# 마이그레이션 실행
+try:
+    check_and_migrate_db()
+except Exception as e:
+    print(f"⚠️ DB Migration failed: {e}")
+
 app = FastAPI(title="Refedia API", version="1.0.0")
 
 # Rate Limiter 설정
