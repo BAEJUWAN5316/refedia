@@ -47,7 +47,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS 설정 (환경 변수 사용)
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS", 
-    "http://localhost:5173,https://www.cloudno7.co.kr"
+    "http://localhost:5173,https://www.cloudno7.co.kr,https://refedia-dev.up.railway.app"
 ).split(",")
 
 app.add_middleware(
