@@ -56,6 +56,36 @@ def check_and_migrate_db():
             except Exception as e:
                 print(f"⚠️ Failed to add view_count column: {e}")
 
+        # 2. Rename author_id -> user_id
+        if 'author_id' in columns and 'user_id' not in columns:
+            print("🔄 Migrating: Renaming author_id to user_id...")
+            try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN author_id TO user_id"))
+                conn.commit()
+                print("✅ Renamed author_id to user_id")
+            except Exception as e:
+                print(f"⚠️ Failed to rename author_id: {e}")
+
+        # 3. Rename primary_category -> primary_categories
+        if 'primary_category' in columns and 'primary_categories' not in columns:
+            print("🔄 Migrating: Renaming primary_category to primary_categories...")
+            try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN primary_category TO primary_categories"))
+                conn.commit()
+                print("✅ Renamed primary_category to primary_categories")
+            except Exception as e:
+                print(f"⚠️ Failed to rename primary_category: {e}")
+
+        # 4. Rename secondary_category -> secondary_categories
+        if 'secondary_category' in columns and 'secondary_categories' not in columns:
+            print("🔄 Migrating: Renaming secondary_category to secondary_categories...")
+            try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN secondary_category TO secondary_categories"))
+                conn.commit()
+                print("✅ Renamed secondary_category to secondary_categories")
+            except Exception as e:
+                print(f"⚠️ Failed to rename secondary_category: {e}")
+
 # 마이그레이션 실행
 try:
     check_and_migrate_db()
