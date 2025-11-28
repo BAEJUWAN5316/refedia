@@ -846,6 +846,57 @@ def update_all_views(
         print(f"❌ Admin view update failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/debug-db")
+def debug_db(
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """DB 스키마 진단 및 강제 마이그레이션"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    
+    from sqlalchemy import text, inspect
+    
+    result = {
+        "status": "started",
+        "tables": [],
+        "posts_columns": [],
+        "migration_attempted": False,
+        "migration_success": False,
+        "error": None
+    }
+    
+    try:
+        inspector = inspect(engine)
+        result["tables"] = inspector.get_table_names()
+        
+        if "posts" in result["tables"]:
+            columns = [col['name'] for col in inspector.get_columns('posts')]
+            result["posts_columns"] = columns
+            
+            if "view_count" not in columns:
+                result["migration_attempted"] = True
+                try:
+                    with engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE posts ADD COLUMN view_count INTEGER DEFAULT 0"))
+                        conn.commit()
+                    result["migration_success"] = True
+                    # Refresh columns
+                    result["posts_columns"] = [col['name'] for col in inspector.get_columns('posts')]
+                except Exception as e:
+                    result["error"] = str(e)
+        
+        # Check Favorites table
+        if "favorites" not in result["tables"]:
+             result["favorites_missing"] = True
+             # Try to create it? Base.metadata.create_all should have done it.
+             # We can try to force create it if needed, but let's just report for now.
+        
+        return result
+        
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
 
 # Image Download Proxy
 # ========================================
