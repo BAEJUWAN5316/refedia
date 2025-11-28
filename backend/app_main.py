@@ -967,6 +967,18 @@ def debug_db(
              columns = [col['name'] for col in inspector.get_columns('favorites')]
              result["favorites_columns"] = columns
              
+             if 'id' not in columns:
+                 result["favorites_migration_attempted"] = True
+                 try:
+                     with engine.connect() as conn:
+                         conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL PRIMARY KEY"))
+                         conn.commit()
+                     result["favorites_migration_success"] = True
+                     # Refresh columns
+                     result["favorites_columns"] = [col['name'] for col in inspector.get_columns('favorites')]
+                 except Exception as e:
+                     result["favorites_migration_error"] = str(e)
+             
              # Test Favorite Query
              try:
                  from db_models import Favorite
@@ -974,6 +986,7 @@ def debug_db(
                  result["favorite_count"] = fav_count
                  result["favorite_query_test"] = "success"
              except Exception as e:
+                 db.rollback() # Rollback transaction on error
                  result["favorite_query_test"] = "failed"
                  result["favorite_error"] = str(e)
         else:
@@ -1016,6 +1029,7 @@ def debug_db(
                 result["orm_test"] = "failed_validation"
             
         except Exception as e:
+            db.rollback() # Rollback transaction on error
             import traceback
             result["orm_test"] = "failed"
             result["orm_error"] = str(e)
