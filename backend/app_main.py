@@ -952,22 +952,34 @@ def debug_db(
             result["user_count"] = user_count
             
             # Test Post query
-            post = db.query(DBPost).first()
-            if post:
-                result["first_post"] = {
-                    "id": post.id,
-                    "title": post.title,
-                    "user_id": post.user_id,
-                    "view_count": post.view_count,
-                    "primary_categories": post.primary_categories
-                }
-                # Test Relationship
-                if post.author:
-                    result["first_post_author"] = post.author.name
+            posts = db.query(DBPost).limit(50).all()
+            result["posts_checked"] = len(posts)
+            result["validation_errors"] = []
+            
+            from models import PostResponse
+            
+            for i, post in enumerate(posts):
+                try:
+                    # Manually trigger Pydantic validation
+                    PostResponse.model_validate(post)
+                except Exception as e:
+                    result["validation_errors"].append({
+                        "post_id": post.id,
+                        "error": str(e),
+                        "data_preview": {
+                            "primary_categories": post.primary_categories,
+                            "secondary_categories": post.secondary_categories,
+                            "video_type": post.video_type,
+                            "platform": post.platform
+                        }
+                    })
+                    if len(result["validation_errors"]) >= 5: # Limit errors
+                        break
+            
+            if not result["validation_errors"]:
+                result["orm_test"] = "success"
             else:
-                result["first_post"] = None
-                
-            result["orm_test"] = "success"
+                result["orm_test"] = "failed_validation"
             
         except Exception as e:
             import traceback
