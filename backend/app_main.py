@@ -661,10 +661,23 @@ def get_posts(
     
     # 작성자 이름 및 좋아요 여부 설정
     try:
+        import json
         for post in posts:
             if post.author:
                 post.author_name = post.author.name
-        print("DEBUG: Author names set")
+            
+            # JSON 파싱 보정 (DB에 문자열로 저장된 경우)
+            if isinstance(post.primary_categories, str):
+                try:
+                    post.primary_categories = json.loads(post.primary_categories)
+                except:
+                    post.primary_categories = []
+            if isinstance(post.secondary_categories, str):
+                try:
+                    post.secondary_categories = json.loads(post.secondary_categories)
+                except:
+                    post.secondary_categories = []
+        print("DEBUG: Author names and categories processed")
             
         # 좋아요 여부 확인
         if current_user:
@@ -708,6 +721,19 @@ def get_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
+    # JSON 파싱 보정
+    import json
+    if isinstance(post.primary_categories, str):
+        try:
+            post.primary_categories = json.loads(post.primary_categories)
+        except:
+            post.primary_categories = []
+    if isinstance(post.secondary_categories, str):
+        try:
+            post.secondary_categories = json.loads(post.secondary_categories)
+        except:
+            post.secondary_categories = []
+
     # 작성자 이름 설정
     if post.author:
         post.author_name = post.author.name
