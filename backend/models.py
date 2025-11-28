@@ -109,6 +109,16 @@ class PostResponse(BaseModel):
             obj.author_name = obj.author.name
         return super().model_validate(obj, *args, **kwargs)
 
+    @validator("primary_categories", "secondary_categories", pre=True)
+    def parse_json_categories(cls, v):
+        import json
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except ValueError:
+                return []
+        return v or []
+
 
 # Token Models
 class Token(BaseModel):
