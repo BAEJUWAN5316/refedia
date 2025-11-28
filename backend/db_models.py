@@ -57,6 +57,7 @@ class Post(Base):
     author_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    view_count = Column(Integer, default=0)
 
     # Relationships
     author = relationship("User", back_populates="posts")

@@ -276,27 +276,34 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
                         )}
                     </h3>
                     {!isEditing && (
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {post.primary_categories && post.primary_categories
-                                .map(id => ({ id, name: getCategoryName(id, 'primary') }))
-                                .sort((a, b) => a.name.localeCompare(b.name))
-                                .map(cat => (
-                                    <span key={cat.id} className="badge badge-primary">
-                                        {cat.name}
-                                    </span>
-                                ))}
-                            {post.secondary_categories && post.secondary_categories
-                                .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
-                                .sort((a, b) => a.name.localeCompare(b.name))
-                                .map(cat => (
-                                    <span key={cat.id} className="badge badge-secondary">
-                                        {cat.name}
-                                    </span>
-                                ))}
-                            <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'}`}>
-                                {post.video_type === 'long' ? '📺 Long Form' : '📱 Short Form'}
-                            </span>
-                        </div>
+                        <>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {post.primary_categories && post.primary_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'primary') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-primary">
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                {post.secondary_categories && post.secondary_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-secondary">
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'}`}>
+                                    {post.video_type === 'long' ? '📺 Long Form' : '📱 Short Form'}
+                                </span>
+                            </div>
+                            <div style={{ marginTop: '0.5rem' }}>
+                                <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#aaa', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    👁️ {post.view_count ? post.view_count.toLocaleString() : 0}
+                                </span>
+                            </div>
+                        </>
                     )}
                 </div>
                 <button className="btn btn-icon" onClick={onClose || (() => navigate('/'))} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer', marginLeft: '1rem' }}>

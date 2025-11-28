@@ -12,6 +12,9 @@ from datetime import timedelta, datetime
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from database import engine, get_db, Base
 from db_models import User, Category, Post as DBPost, Favorite
@@ -486,7 +489,56 @@ def create_post(
         )
 
 
-@app.get("/api/posts", response_model=List[PostResponse])
+@app.post("/api/admin/update-views")
+def update_all_view_counts(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """모든 게시물의 조회수 업데이트 (관리자 전용)"""
+    from youtube_service import update_view_counts_batch
+    
+    # 1. 모든 게시물 조회
+    posts = db.query(DBPost).all()
+    if not posts:
+        return {"message": "No posts to update", "updated_count": 0}
+    
+    # 2. URL에서 Video ID 추출
+    video_map = {} # {video_id: [post_obj, ...]} (같은 영상이 여러 번 있을 수도 있음)
+    
+    for post in posts:
+        vid = None
+        if 'v=' in post.url:
+            vid = post.url.split('v=')[1].split('&')[0]
+        elif 'youtu.be/' in post.url:
+            vid = post.url.split('youtu.be/')[1].split('?')[0]
+        elif 'shorts/' in post.url:
+            vid = post.url.split('shorts/')[1].split('?')[0]
+            
+        if vid:
+            if vid not in video_map:
+                video_map[vid] = []
+            video_map[vid].append(post)
+            
+    # 3. YouTube API로 조회수 가져오기 (배치 처리)
+    all_video_ids = list(video_map.keys())
+    print(f"🔄 Updating view counts for {len(all_video_ids)} videos...")
+    
+    view_counts = update_view_counts_batch(all_video_ids)
+    
+    # 4. DB 업데이트
+    updated_count = 0
+    for vid, count in view_counts.items():
+        if vid in video_map:
+            for post in video_map[vid]:
+                post.view_count = count
+                updated_count += 1
+                
+    db.commit()
+    print(f"✅ Updated view counts for {updated_count} posts")
+    
+    return {"message": "View counts updated successfully", "updated_count": updated_count}
+
+
 @app.get("/api/posts", response_model=List[PostResponse])
 def get_posts(
     page: int = 1,

@@ -138,6 +138,37 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
                 </div>
 
                 <div className="modal-body">
+                    {/* System Management */}
+                    <section style={{ marginBottom: '3rem' }}>
+                        <h4 style={{ marginBottom: '1rem' }}>🛠️ System Management</h4>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={async () => {
+                                    if (!confirm('Update view counts for ALL posts? This may take a while.')) return;
+                                    try {
+                                        const token = localStorage.getItem('token');
+                                        const response = await fetch(`${API_URL}/api/admin/update-views`, {
+                                            method: 'POST',
+                                            headers: { 'Authorization': `Bearer ${token}` }
+                                        });
+                                        if (response.ok) {
+                                            const data = await response.json();
+                                            alert(`Success! Updated ${data.updated_count} posts.`);
+                                        } else {
+                                            alert('Failed to update views.');
+                                        }
+                                    } catch (error) {
+                                        console.error('Failed to update views:', error);
+                                        alert('Error updating views.');
+                                    }
+                                }}
+                            >
+                                🔄 Update All View Counts
+                            </button>
+                        </div>
+                    </section>
+
                     {/* User Management */}
                     <section style={{ marginBottom: '3rem' }}>
                         <h4 style={{ marginBottom: '1rem' }}>👥 User Management</h4>

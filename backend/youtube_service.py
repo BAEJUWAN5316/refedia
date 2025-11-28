@@ -245,3 +245,60 @@ def validate_youtube_url(url: str) -> bool:
         'youtube.com/shorts/'
     ]
     return any(pattern in url for pattern in valid_patterns)
+
+
+def update_view_counts_batch(video_ids: List[str]) -> dict:
+    """
+    YouTube Data API를 사용하여 여러 영상의 조회수를 한 번에 업데이트
+    Args:
+        video_ids: YouTube Video ID 리스트 (최대 50개)
+    Returns:
+        dict: {video_id: view_count}
+    """
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    if not api_key:
+        print("⚠️ YOUTUBE_API_KEY not found in environment variables")
+        return {}
+
+    if not video_ids:
+        return {}
+
+    # 50개씩 청크로 나누어 처리 (API 제한)
+    results = {}
+    
+    # Extract IDs from URLs if full URLs are passed (safety check)
+    clean_ids = []
+    for vid in video_ids:
+        if 'v=' in vid:
+            clean_ids.append(vid.split('v=')[1].split('&')[0])
+        elif 'youtu.be/' in vid:
+            clean_ids.append(vid.split('youtu.be/')[1].split('?')[0])
+        elif 'shorts/' in vid:
+            clean_ids.append(vid.split('shorts/')[1].split('?')[0])
+        else:
+            clean_ids.append(vid)
+
+    import requests
+    
+    # Chunk size 50
+    for i in range(0, len(clean_ids), 50):
+        chunk = clean_ids[i:i+50]
+        ids_str = ",".join(chunk)
+        
+        url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={ids_str}&key={api_key}"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                for item in data.get('items', []):
+                    vid = item['id']
+                    stats = item['statistics']
+                    view_count = int(stats.get('viewCount', 0))
+                    results[vid] = view_count
+            else:
+                print(f"❌ YouTube API Error: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"❌ Failed to fetch view counts: {e}")
+            
+    return results

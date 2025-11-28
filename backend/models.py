@@ -97,6 +97,7 @@ class PostResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_favorited: bool = False
+    view_count: int = 0
 
     class Config:
         from_attributes = True

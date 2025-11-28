@@ -86,7 +86,10 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
 
                     <div className="post-footer">
                         <span className="post-author">👤 {post.author_name || 'Unknown'}</span>
-                        <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <span className="post-views">👁️ {post.view_count?.toLocaleString() || 0}</span>
+                            <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 </div>
             </div>
