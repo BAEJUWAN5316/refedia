@@ -942,7 +942,20 @@ def debug_db(
                     result["error"] = str(e)
         
         # Check Favorites table
-        if "favorites" not in result["tables"]:
+        if "favorites" in result["tables"]:
+             columns = [col['name'] for col in inspector.get_columns('favorites')]
+             result["favorites_columns"] = columns
+             
+             # Test Favorite Query
+             try:
+                 from db_models import Favorite
+                 fav_count = db.query(Favorite).count()
+                 result["favorite_count"] = fav_count
+                 result["favorite_query_test"] = "success"
+             except Exception as e:
+                 result["favorite_query_test"] = "failed"
+                 result["favorite_error"] = str(e)
+        else:
              result["favorites_missing"] = True
         
         # 5. Runtime ORM Test
