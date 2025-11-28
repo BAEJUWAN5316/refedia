@@ -918,9 +918,37 @@ def debug_db(
         # Check Favorites table
         if "favorites" not in result["tables"]:
              result["favorites_missing"] = True
-             # Try to create it? Base.metadata.create_all should have done it.
-             # We can try to force create it if needed, but let's just report for now.
         
+        # 5. Runtime ORM Test
+        try:
+            # Test User query
+            user_count = db.query(User).count()
+            result["user_count"] = user_count
+            
+            # Test Post query
+            post = db.query(DBPost).first()
+            if post:
+                result["first_post"] = {
+                    "id": post.id,
+                    "title": post.title,
+                    "user_id": post.user_id,
+                    "view_count": post.view_count,
+                    "primary_categories": post.primary_categories
+                }
+                # Test Relationship
+                if post.author:
+                    result["first_post_author"] = post.author.name
+            else:
+                result["first_post"] = None
+                
+            result["orm_test"] = "success"
+            
+        except Exception as e:
+            import traceback
+            result["orm_test"] = "failed"
+            result["orm_error"] = str(e)
+            result["orm_traceback"] = traceback.format_exc()
+
         return result
         
     except Exception as e:
