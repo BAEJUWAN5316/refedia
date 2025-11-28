@@ -87,16 +87,25 @@ def check_and_migrate_db():
                 print(f"⚠️ Failed to rename secondary_category: {e}")
 
         # 5. Check Favorites table for 'id' column
-        if 'favorites' in result["tables"]:
+        if 'favorites' in inspector.get_table_names():
             fav_columns = [col['name'] for col in inspector.get_columns('favorites')]
             if 'id' not in fav_columns:
                 print("🔄 Migrating: Adding id column to favorites table...")
                 try:
-                    # Postgres specific (SERIAL) - SQLite might fail or need AUTOINCREMENT
-                    # Try Postgres syntax first since we saw psycopg2 error
-                    conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL PRIMARY KEY"))
-                    conn.commit()
-                    print("✅ Added id column to favorites")
+                    # Postgres specific (SERIAL)
+                    # Try adding as PK first
+                    try:
+                        conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL PRIMARY KEY"))
+                        conn.commit()
+                        print("✅ Added id column to favorites (PK)")
+                    except Exception as pk_err:
+                        print(f"⚠️ Failed to add id as PK: {pk_err}")
+                        conn.rollback()
+                        # Fallback: Add as regular column
+                        conn.execute(text("ALTER TABLE favorites ADD COLUMN id SERIAL"))
+                        conn.commit()
+                        print("✅ Added id column to favorites (Non-PK)")
+                        
                 except Exception as e:
                     print(f"⚠️ Failed to add id column to favorites (Postgres method): {e}")
                     try:
