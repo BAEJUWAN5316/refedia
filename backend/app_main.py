@@ -12,12 +12,9 @@ from datetime import timedelta, datetime
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from dotenv import load_dotenv
-
-load_dotenv()
 
 from database import engine, get_db, Base
-from db_models import User, Category, Post as DBPost, Favorite
+from db_models import User, Category, Post as DBPost
 from models import (
     UserCreate, UserLogin, UserResponse, UserApprove, UserMakeAdmin, UserRevokeAdmin,
     PasswordVerify, Token,
@@ -35,48 +32,7 @@ from security_logger import log_login_attempt, log_security_event
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
 
-
-
 app = FastAPI(title="Refedia API", version="1.0.0")
-
-# Startup Event: Create Admin User if not exists
-@app.on_event("startup")
-def startup_event():
-    from database import SessionLocal
-    db = SessionLocal()
-    try:
-        email = "bae@socialmc.co.kr"
-        employee_id = "TH251110"
-        name = "배주완"
-        
-        # Check if user exists
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            print(f"Creating initial admin user: {email}")
-            new_user = User(
-                email=email,
-                name=name,
-                employee_id_hash=hash_employee_id(employee_id),
-                is_approved=True,
-                is_admin=True
-            )
-            db.add(new_user)
-            db.commit()
-            print("✅ Initial admin user created successfully.")
-        else:
-            print(f"ℹ️ Admin user {email} already exists. Skipping creation.")
-            
-            # Ensure admin privileges (optional, but good for safety)
-            if not user.is_admin or not user.is_approved:
-                user.is_admin = True
-                user.is_approved = True
-                db.commit()
-                print(f"✅ Updated existing user {email} to admin.")
-                
-    except Exception as e:
-        print(f"❌ Failed to create initial admin user: {e}")
-    finally:
-        db.close()
 
 # Rate Limiter 설정
 limiter = Limiter(key_func=get_remote_address)
@@ -86,7 +42,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS 설정 (환경 변수 사용)
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS", 
-    "http://localhost:5173,https://www.cloudno7.co.kr,https://refedia-dev.up.railway.app"
+    "http://localhost:5173,https://www.cloudno7.co.kr"
 ).split(",")
 
 app.add_middleware(
@@ -341,7 +297,27 @@ def delete_category(category_id: str, current_user: User = Depends(get_current_a
 # YouTube API
 # ========================================
 
-# Frame extraction endpoint removed as per user request
+@app.get("/api/youtube/frames")
+@limiter.limit("10/minute")  # YouTube API 과도한 호출 방지
+def get_youtube_frames(
+    request: Request,
+    url: str = Query(...), 
+    count: int = Query(4), 
+    current_user: User = Depends(get_current_approved_user)
+):
+    """YouTube 랜덤 프레임 추출 (Base64)"""
+    if not validate_youtube_url(url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Invalid YouTube URL"
+        )
+    frames = extract_frames(url, count)
+    if not frames:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Failed to extract frames"
+        )
+    return {"frames": frames, "count": len(frames)}
 
 
 
@@ -453,17 +429,16 @@ def create_post(
             title = unicodedata.normalize('NFC', title)
         
         # 게시물 생성
-        import json
         new_post = DBPost(
             url=url_str,
             title=title,
             thumbnail=thumbnail,
             platform="youtube",
             video_type=video_type,
-            primary_category=json.dumps(post_data.primary_categories),
-            secondary_category=json.dumps(post_data.secondary_categories),
+            primary_categories=post_data.primary_categories,
+            secondary_categories=post_data.secondary_categories,
             memo=post_data.memo,
-            author_id=current_user.id
+            user_id=current_user.id
         )
         
         db.add(new_post)
@@ -489,56 +464,7 @@ def create_post(
         )
 
 
-@app.post("/api/admin/update-views")
-def update_all_view_counts(
-    current_user: User = Depends(get_current_admin_user),
-    db: Session = Depends(get_db)
-):
-    """모든 게시물의 조회수 업데이트 (관리자 전용)"""
-    from youtube_service import update_view_counts_batch
-    
-    # 1. 모든 게시물 조회
-    posts = db.query(DBPost).all()
-    if not posts:
-        return {"message": "No posts to update", "updated_count": 0}
-    
-    # 2. URL에서 Video ID 추출
-    video_map = {} # {video_id: [post_obj, ...]} (같은 영상이 여러 번 있을 수도 있음)
-    
-    for post in posts:
-        vid = None
-        if 'v=' in post.url:
-            vid = post.url.split('v=')[1].split('&')[0]
-        elif 'youtu.be/' in post.url:
-            vid = post.url.split('youtu.be/')[1].split('?')[0]
-        elif 'shorts/' in post.url:
-            vid = post.url.split('shorts/')[1].split('?')[0]
-            
-        if vid:
-            if vid not in video_map:
-                video_map[vid] = []
-            video_map[vid].append(post)
-            
-    # 3. YouTube API로 조회수 가져오기 (배치 처리)
-    all_video_ids = list(video_map.keys())
-    print(f"🔄 Updating view counts for {len(all_video_ids)} videos...")
-    
-    view_counts = update_view_counts_batch(all_video_ids)
-    
-    # 4. DB 업데이트
-    updated_count = 0
-    for vid, count in view_counts.items():
-        if vid in video_map:
-            for post in video_map[vid]:
-                post.view_count = count
-                updated_count += 1
-                
-    db.commit()
-    print(f"✅ Updated view counts for {updated_count} posts")
-    
-    return {"message": "View counts updated successfully", "updated_count": updated_count}
-
-
+@app.get("/api/posts", response_model=List[PostResponse])
 @app.get("/api/posts", response_model=List[PostResponse])
 def get_posts(
     page: int = 1,
@@ -550,21 +476,10 @@ def get_posts(
     search: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    seed: Optional[int] = None,
-    my_posts: bool = False,
-    favorites_only: bool = False,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """게시물 목록 조회 (서버 사이드 필터링 & 페이지네이션)"""
     query = db.query(DBPost)
-    
-    # 0. User Specific Filters
-    if my_posts:
-        query = query.filter(DBPost.author_id == current_user.id)
-        
-    if favorites_only:
-        query = query.join(Favorite).filter(Favorite.user_id == current_user.id)
     
     # 1. Video Type
     if video_type and video_type != 'all':
@@ -617,77 +532,37 @@ def get_posts(
     if primary_category:
         if filter_logic == 'AND':
             for cat_id in primary_category:
-                query = query.filter(DBPost.primary_category.like(f'%"{cat_id}"%'))
+                query = query.filter(DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%'))
         else: # OR
-            conditions = [DBPost.primary_category.like(f'%"{cat_id}"%') for cat_id in primary_category]
+            conditions = [DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in primary_category]
             query = query.filter(or_(*conditions))
 
     if secondary_category:
         if filter_logic == 'AND':
             for cat_id in secondary_category:
-                query = query.filter(DBPost.secondary_category.like(f'%"{cat_id}"%'))
+                query = query.filter(DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%'))
         else: # OR
-            conditions = [DBPost.secondary_category.like(f'%"{cat_id}"%') for cat_id in secondary_category]
+            conditions = [DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in secondary_category]
             query = query.filter(or_(*conditions))
         
     # Pagination
     skip = (page - 1) * limit
+    posts = query.options(joinedload(DBPost.author))\
+                 .order_by(DBPost.created_at.desc())\
+                 .offset(skip)\
+                 .limit(limit)\
+                 .all()
     
-    if seed is not None:
-        # Seed-based Random Shuffle (Deterministic for same seed)
-        # 1. Fetch ALL matching IDs
-        all_ids = [id[0] for id in query.with_entities(DBPost.id).order_by(DBPost.created_at.desc()).all()]
-        
-        # 2. Shuffle IDs with seed
-        import random
-        random.Random(seed).shuffle(all_ids)
-        
-        # 3. Slice IDs for current page
-        paged_ids = all_ids[skip : skip + limit]
-        
-        # 4. Fetch posts for paged_ids
-        if not paged_ids:
-            posts = []
-        else:
-            # Fetch posts (order is not guaranteed by IN clause)
-            unsorted_posts = query.options(joinedload(DBPost.author))\
-                                  .filter(DBPost.id.in_(paged_ids))\
-                                  .all()
-            
-            # 5. Sort posts to match paged_ids order
-            posts_map = {post.id: post for post in unsorted_posts}
-            posts = [posts_map[id] for id in paged_ids if id in posts_map]
-            
-    else:
-        # Standard Pagination (Created At Desc)
-        posts = query.options(joinedload(DBPost.author))\
-                     .order_by(DBPost.created_at.desc())\
-                     .offset(skip)\
-                     .limit(limit)\
-                     .all()
-    
-    # 작성자 이름 및 즐겨찾기 여부 설정
-    # 현재 사용자의 즐겨찾기 목록 조회 (성능 최적화를 위해 한 번에 조회)
-    user_favorites = set()
-    if current_user:
-        favs = db.query(Favorite.post_id).filter(Favorite.user_id == current_user.id).all()
-        user_favorites = {f[0] for f in favs}
-
+    # 작성자 이름 명시적으로 설정
     for post in posts:
         if post.author:
             post.author_name = post.author.name
-        # 즐겨찾기 여부 설정
-        post.is_favorited = post.id in user_favorites
         
     return posts
 
 
 @app.get("/api/posts/{post_id}", response_model=PostResponse)
-def get_post(
-    post_id: int, 
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+def get_post(post_id: int, db: Session = Depends(get_db)):
     """게시물 상세 조회"""
     post = db.query(DBPost).filter(DBPost.id == post_id).first()
     if not post:
@@ -696,13 +571,6 @@ def get_post(
     # 작성자 이름 설정
     if post.author:
         post.author_name = post.author.name
-        
-    # 즐겨찾기 여부 설정
-    fav = db.query(Favorite).filter(
-        Favorite.user_id == current_user.id, 
-        Favorite.post_id == post_id
-    ).first()
-    post.is_favorited = bool(fav)
         
     return post
 
@@ -733,8 +601,6 @@ def update_post(
             post.secondary_categories = post_data.secondary_categories
         if post_data.memo is not None:
             post.memo = post_data.memo
-        if post_data.video_type is not None:
-            post.video_type = post_data.video_type
         
         db.commit()
         db.refresh(post)
@@ -783,8 +649,7 @@ def delete_post(
 ALLOWED_IMAGE_DOMAINS = [
     "i.ytimg.com",
     "img.youtube.com",
-    "i9.ytimg.com",
-    "yt3.ggpht.com"
+    "i9.ytimg.com"
 ]
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -863,32 +728,6 @@ if os.path.exists(frontend_dist):
             
         # 그 외에는 index.html 반환 (SPA 라우팅)
         return FileResponse(os.path.join(frontend_dist, "index.html"))
-
-@app.post("/api/posts/{post_id}/favorite")
-def toggle_favorite(
-    post_id: int,
-    current_user: User = Depends(get_current_approved_user),
-    db: Session = Depends(get_db)
-):
-    """게시물 즐겨찾기 토글"""
-    post = db.query(DBPost).filter(DBPost.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-        
-    favorite = db.query(Favorite).filter(
-        Favorite.user_id == current_user.id,
-        Favorite.post_id == post_id
-    ).first()
-    
-    if favorite:
-        db.delete(favorite)
-        db.commit()
-        return {"status": "removed", "is_favorited": False}
-    else:
-        new_favorite = Favorite(user_id=current_user.id, post_id=post_id)
-        db.add(new_favorite)
-        db.commit()
-        return {"status": "added", "is_favorited": True}
 
 if __name__ == "__main__":
     import uvicorn

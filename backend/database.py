@@ -2,15 +2,6 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
-from pathlib import Path
-
-# Explicitly load .env from the current file's directory
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path)
-
-print(f"DEBUG: Loading .env from {env_path}")
-print(f"DEBUG: DATABASE_URL={os.getenv('DATABASE_URL')}")
 
 # 1. 환경 변수 직접 가져오기 (db_config 의존성 제거)
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -18,7 +9,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # 2. URL이 없는 경우 (방어 코드)
 if not DATABASE_URL:
     print("⚠️ DATABASE_URL 환경 변수가 없습니다. SQLite로 대체합니다.")
-    DATABASE_URL = "sqlite:///./refedia.db" # Force refedia.db if env fails
+    DATABASE_URL = "sqlite:///./test.db"
 
 # 3. URL 공백 제거 및 형식 수정 (postgres:// -> postgresql://)
 # SQLAlchemy 1.4+ 에서는 postgres:// 형식을 더 이상 지원하지 않습니다.
@@ -30,10 +21,6 @@ if DATABASE_URL.startswith("postgres://"):
 print(f"✅ DB 연결 시도: {DATABASE_URL[:10]}...")  # 로그 확인용 (앞부분만 출력)
 
 if DATABASE_URL.startswith("sqlite"):
-    if "///" in DATABASE_URL:
-        db_file = DATABASE_URL.split("///")[1]
-        print(f"DEBUG: SQLite File Path: {os.path.abspath(db_file)}")
-    
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
