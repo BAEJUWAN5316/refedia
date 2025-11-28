@@ -1,1 +1,1 @@
-web: python init_db_and_admin.py && python -m uvicorn app_main:app --host 0.0.0.0 --port $PORT
+web: python init_db_and_admin.py && python migrate_add_view_count.py && python -m uvicorn app_main:app --host 0.0.0.0 --port $PORT
