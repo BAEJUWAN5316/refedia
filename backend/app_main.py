@@ -471,15 +471,24 @@ def get_youtube_frames(
 @app.get("/api/categories")
 def get_categories(db: Session = Depends(get_db)):
     """카테고리 목록 (primary/secondary 그룹화)"""
-    # 이름순 정렬하여 조회
-    categories = db.query(Category).order_by(Category.name).all()
+    # DB에서 가져온 후 Python에서 정렬 (DB Collation 차이 방지)
+    categories = db.query(Category).all()
     
+    def sort_key(c):
+        return c.name.lower()
+
+    industry = sorted([{"id": c.id, "name": c.name} for c in categories if c.type == "industry"], key=lambda x: x['name'].lower())
+    genre = sorted([{"id": c.id, "name": c.name} for c in categories if c.type == "genre"], key=lambda x: x['name'].lower())
+    cast = sorted([{"id": c.id, "name": c.name} for c in categories if c.type == "cast"], key=lambda x: x['name'].lower())
+    mood = sorted([{"id": c.id, "name": c.name} for c in categories if c.type == "mood"], key=lambda x: x['name'].lower())
+    editing = sorted([{"id": c.id, "name": c.name} for c in categories if c.type == "editing"], key=lambda x: x['name'].lower())
+
     return {
-        "industry": [{"id": c.id, "name": c.name} for c in categories if c.type == "industry"],
-        "genre": [{"id": c.id, "name": c.name} for c in categories if c.type == "genre"],
-        "cast": [{"id": c.id, "name": c.name} for c in categories if c.type == "cast"],
-        "mood": [{"id": c.id, "name": c.name} for c in categories if c.type == "mood"],
-        "editing": [{"id": c.id, "name": c.name} for c in categories if c.type == "editing"],
+        "industry": industry,
+        "genre": genre,
+        "cast": cast,
+        "mood": mood,
+        "editing": editing,
     }
 
 
