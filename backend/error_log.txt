@@ -653,3 +653,153 @@ WHERE posts.url = ?
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 
 --------------------------------------------------
+Create Post Error time: 2025-12-01 16:29:29.051246
+Error: 'primary_categories' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 587, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<12 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'primary_categories' is an invalid keyword argument for Post
+
+--------------------------------------------------
+Create Post Error time: 2025-12-01 16:30:52.763940
+Error: 'primary_categories' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 587, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<12 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'primary_categories' is an invalid keyword argument for Post
+
+--------------------------------------------------
+Create Post Error time: 2025-12-01 16:31:23.791081
+Error: 'primary_categories' is an invalid keyword argument for Post
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 587, in create_post
+    new_post = DBPost(
+        url=url_str,
+    ...<12 lines>...
+        user_id=current_user.id
+    )
+  File "<string>", line 4, in __init__
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 571, in _initialize_instance
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state.py", line 569, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 2179, in _declarative_constructor
+    raise TypeError(
+        "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+    )
+TypeError: 'primary_categories' is an invalid keyword argument for Post
+
+--------------------------------------------------
+Error time: 2025-12-01 16:34:06.513042
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    if post_data.primary_categories is not None:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------
+Error time: 2025-12-01 16:34:18.530830
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    if post_data.primary_categories is not None:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------
+Error time: 2025-12-01 16:34:52.850374
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    if post_data.primary_categories is not None:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------
+Error time: 2025-12-01 16:34:59.276336
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    if post_data.primary_categories is not None:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------
+Error time: 2025-12-01 16:38:08.204643
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    post.title = post_data.title
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------
+Error time: 2025-12-01 16:38:14.995352
+Error: 'PostUpdate' object has no attribute 'primary_categories'
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 952, in update_post
+    post.title = post_data.title
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\p-d0574\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\main.py", line 1026, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
+
+--------------------------------------------------

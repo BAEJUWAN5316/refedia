@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, Response, Body
 from dotenv import load_dotenv
 import os
 
@@ -571,9 +571,13 @@ def create_post(
                 detail="Post with this URL already exists"
             )
         
-        # YouTube 메타데이터 추출
-        title, thumbnail, video_type = extract_youtube_metadata(url_str)
-        
+        # 1. YouTube 메타데이터 추출 (제목, 썸네일, 영상 타입, 설명)
+        try:
+            from youtube_service import extract_youtube_metadata
+            title, thumbnail, video_type, _ = extract_youtube_metadata(url_str)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube metadata: {str(e)}")
+
         # Normalize title to NFC
         import unicodedata
         if title:
@@ -586,7 +590,6 @@ def create_post(
             thumbnail=thumbnail,
             platform="youtube",
             video_type=video_type,
-
             industry_categories=post_data.industry_categories,
             genre_categories=post_data.genre_categories,
             cast_categories=post_data.cast_categories,
@@ -638,7 +641,45 @@ def create_post(
         )
 
 
-@app.get("/api/posts", response_model=List[PostResponse])
+@app.post("/api/ai/analyze")
+def analyze_video_category(
+    url: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_approved_user),
+    db: Session = Depends(get_db)
+):
+    """
+    AI를 사용하여 비디오 URL을 분석하고 적절한 카테고리를 추천합니다.
+    """
+    # 1. YouTube 메타데이터 추출
+    try:
+        from youtube_service import extract_youtube_metadata
+        title, _, _, description = extract_youtube_metadata(url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube metadata: {str(e)}")
+        
+    # 2. 전체 카테고리 목록 조회
+    categories = db.query(Category).all()
+    categories_structure = {
+        "industry": [{"id": c.id, "name": c.name} for c in categories if c.type == "industry"],
+        "genre": [{"id": c.id, "name": c.name} for c in categories if c.type == "genre"],
+        "cast": [{"id": c.id, "name": c.name} for c in categories if c.type == "cast"],
+        "mood": [{"id": c.id, "name": c.name} for c in categories if c.type == "mood"],
+        "editing": [{"id": c.id, "name": c.name} for c in categories if c.type == "editing"],
+    }
+    
+    # 3. Gemini AI 분석 요청
+    try:
+        from ai_service import analyze_video_with_gemini
+        recommended_categories = analyze_video_with_gemini(title, description, categories_structure)
+        return recommended_categories
+    except Exception as e:
+        # 429 Error (Too Many Requests) 처리
+        if "429" in str(e):
+            raise HTTPException(status_code=429, detail="AI service is currently busy. Please try again later.")
+        print(f"AI Analysis Error: {e}")
+        raise HTTPException(status_code=500, detail="AI analysis failed")
+
+
 @app.get("/api/posts", response_model=List[PostResponse])
 def get_posts(
     page: int = 1,
@@ -826,15 +867,20 @@ def get_post(
     
     # JSON 파싱 보정
     import json
-    # JSON 파싱 보정
-    import json
     for attr in ['industry_categories', 'genre_categories', 'cast_categories', 'mood_categories', 'editing_categories']:
         val = getattr(post, attr)
         if isinstance(val, str):
             try:
-                setattr(post, attr, json.loads(val))
+                parsed = json.loads(val)
+                if isinstance(parsed, list):
+                    setattr(post, attr, [str(x) for x in parsed])
+                else:
+                    setattr(post, attr, [])
             except:
                 setattr(post, attr, [])
+        elif isinstance(val, list):
+             # 이미 리스트인 경우에도 문자열로 변환 (혹시 모를 정수형 ID 방지)
+             setattr(post, attr, [str(x) for x in val])
 
     # 작성자 이름 설정
     if post.author:
@@ -906,12 +952,19 @@ def update_post(
     
     try:
         # 업데이트
+        # 업데이트
         if post_data.title is not None:
             post.title = post_data.title
-        if post_data.primary_categories is not None:
-            post.primary_categories = post_data.primary_categories
-        if post_data.secondary_categories is not None:
-            post.secondary_categories = post_data.secondary_categories
+        if post_data.industry_categories is not None:
+            post.industry_categories = post_data.industry_categories
+        if post_data.genre_categories is not None:
+            post.genre_categories = post_data.genre_categories
+        if post_data.cast_categories is not None:
+            post.cast_categories = post_data.cast_categories
+        if post_data.mood_categories is not None:
+            post.mood_categories = post_data.mood_categories
+        if post_data.editing_categories is not None:
+            post.editing_categories = post_data.editing_categories
         if post_data.memo is not None:
             post.memo = post_data.memo
         if post_data.video_type is not None:
