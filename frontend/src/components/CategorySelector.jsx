@@ -12,11 +12,11 @@ export default function CategorySelector({ categories, selected, onChange, type 
 
     const getLabel = () => {
         switch (type) {
-            case 'industry': return '업종 (Industry)';
-            case 'genre': return '장르 (Genre)';
-            case 'cast': return '출연자 (Cast)';
-            case 'mood': return '분위기 (Mood)';
-            case 'editing': return '편집/효과 (Editing)';
+            case 'industry': return '- 필수 항목입니다.';
+            case 'genre': return '- 필수 항목입니다.';
+            case 'cast': return '- 선택 항목입니다.';
+            case 'mood': return '- 선택 항목입니다.';
+            case 'editing': return '- 선택 항목입니다.';
             default: return 'Categories';
         }
     };

@@ -69,8 +69,8 @@ class CategoryResponse(BaseModel):
 # Post Models
 class PostCreate(BaseModel):
     url: HttpUrl  # URL 형식 자동 검증
-    industry_categories: List[str] = Field(default=[], max_items=5)
-    genre_categories: List[str] = Field(default=[], max_items=5)
+    industry_categories: List[str] = Field(..., min_items=1, max_items=5)
+    genre_categories: List[str] = Field(..., min_items=1, max_items=5)
     cast_categories: List[str] = Field(default=[], max_items=5)
     mood_categories: List[str] = Field(default=[], max_items=5)
     editing_categories: List[str] = Field(default=[], max_items=5)

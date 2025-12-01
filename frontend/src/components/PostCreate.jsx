@@ -47,6 +47,16 @@ export default function PostCreate({ onClose, onPostCreated }) {
             return;
         }
 
+        // Category validation
+        if (industryCats.length === 0) {
+            setError('Please select at least one Industry category');
+            return;
+        }
+        if (genreCats.length === 0) {
+            setError('Please select at least one Genre category');
+            return;
+        }
+
         setLoading(true);
         setError('');
 
@@ -86,7 +96,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" style={{ maxWidth: '600px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth: '1040px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 className="modal-title" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>New Reference</h3>
                     <button className="btn btn-icon" onClick={onClose} style={{ fontSize: '1.2rem' }}>❌</button>
@@ -114,10 +124,10 @@ export default function PostCreate({ onClose, onPostCreated }) {
                         />
                     </div>
 
-                    <div className="grid grid-2" style={{ gap: '1.5rem', gridTemplateColumns: '1fr 1fr' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div className="input-group">
                             <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
-                                업종 (Industry)
+                                업종 (Industry) <span style={{ color: 'red' }}>*</span>
                             </label>
                             <CategorySelector
                                 categories={categories}
@@ -130,7 +140,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
                         <div className="input-group">
                             <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
-                                장르 (Genre)
+                                장르 (Genre) <span style={{ color: 'red' }}>*</span>
                             </label>
                             <CategorySelector
                                 categories={categories}
@@ -183,14 +193,14 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
                     <div className="input-group">
                         <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
-                            Memo
+                            Memo - 브랜드, 출연자, 장소 등 검색 될 내용을 작성해주세요.
                         </label>
                         <textarea
                             className="input-field"
                             rows={4}
                             value={memo}
                             onChange={(e) => setMemo(e.target.value)}
-                            placeholder="Add a note about this reference..."
+                            placeholder="EX) 숏박스, 김원훈, 조진세, 서울, 마곡 등..."
                             style={{ padding: '0.75rem', fontSize: '1rem', width: '100%', resize: 'vertical' }}
                         />
                     </div>
