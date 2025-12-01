@@ -69,15 +69,21 @@ class CategoryResponse(BaseModel):
 # Post Models
 class PostCreate(BaseModel):
     url: HttpUrl  # URL 형식 자동 검증
-    primary_categories: List[str] = Field(..., min_items=1, max_items=5)
-    secondary_categories: List[str] = Field(..., min_items=1, max_items=5)
+    industry_categories: List[str] = Field(default=[], max_items=5)
+    genre_categories: List[str] = Field(default=[], max_items=5)
+    cast_categories: List[str] = Field(default=[], max_items=5)
+    mood_categories: List[str] = Field(default=[], max_items=5)
+    editing_categories: List[str] = Field(default=[], max_items=5)
     memo: Optional[str] = Field(None, max_length=1000)
 
 
 class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
-    primary_categories: Optional[List[str]] = Field(None, max_items=5)
-    secondary_categories: Optional[List[str]] = Field(None, max_items=5)
+    industry_categories: Optional[List[str]] = Field(None, max_items=5)
+    genre_categories: Optional[List[str]] = Field(None, max_items=5)
+    cast_categories: Optional[List[str]] = Field(None, max_items=5)
+    mood_categories: Optional[List[str]] = Field(None, max_items=5)
+    editing_categories: Optional[List[str]] = Field(None, max_items=5)
     memo: Optional[str] = Field(None, max_length=1000)
     video_type: Optional[str] = None
 
@@ -89,8 +95,11 @@ class PostResponse(BaseModel):
     thumbnail: Optional[str] = None
     platform: str
     video_type: str
-    primary_categories: List[str]
-    secondary_categories: List[str]
+    industry_categories: List[str] = []
+    genre_categories: List[str] = []
+    cast_categories: List[str] = []
+    mood_categories: List[str] = []
+    editing_categories: List[str] = []
     memo: Optional[str] = None
     user_id: int
     author_name: Optional[str] = None
@@ -109,7 +118,7 @@ class PostResponse(BaseModel):
             obj.author_name = obj.author.name
         return super().model_validate(obj, *args, **kwargs)
 
-    @validator("primary_categories", "secondary_categories", pre=True)
+    @validator("industry_categories", "genre_categories", "cast_categories", "mood_categories", "editing_categories", pre=True)
     def parse_json_categories(cls, v):
         import json
         if isinstance(v, str):

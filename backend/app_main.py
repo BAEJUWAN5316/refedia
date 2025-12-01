@@ -66,27 +66,66 @@ def check_and_migrate_db():
             except Exception as e:
                 print(f"⚠️ Failed to rename author_id: {e}")
 
-        # 3. Rename primary_category -> primary_categories
-        if 'primary_category' in columns and 'primary_categories' not in columns:
-            print("🔄 Migrating: Renaming primary_category to primary_categories...")
+        # 3. Rename primary_category -> industry_categories
+        if 'primary_category' in columns and 'industry_categories' not in columns:
+            print("🔄 Migrating: Renaming primary_category to industry_categories...")
             try:
-                conn.execute(text("ALTER TABLE posts RENAME COLUMN primary_category TO primary_categories"))
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN primary_category TO industry_categories"))
                 conn.commit()
-                print("✅ Renamed primary_category to primary_categories")
+                print("✅ Renamed primary_category to industry_categories")
             except Exception as e:
                 print(f"⚠️ Failed to rename primary_category: {e}")
-
-        # 4. Rename secondary_category -> secondary_categories
-        if 'secondary_category' in columns and 'secondary_categories' not in columns:
-            print("🔄 Migrating: Renaming secondary_category to secondary_categories...")
-            try:
-                conn.execute(text("ALTER TABLE posts RENAME COLUMN secondary_category TO secondary_categories"))
+        elif 'primary_categories' in columns and 'industry_categories' not in columns:
+             print("🔄 Migrating: Renaming primary_categories to industry_categories...")
+             try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN primary_categories TO industry_categories"))
                 conn.commit()
-                print("✅ Renamed secondary_category to secondary_categories")
+                print("✅ Renamed primary_categories to industry_categories")
+             except Exception as e:
+                print(f"⚠️ Failed to rename primary_categories: {e}")
+
+        # 4. Rename secondary_category -> genre_categories
+        if 'secondary_category' in columns and 'genre_categories' not in columns:
+            print("🔄 Migrating: Renaming secondary_category to genre_categories...")
+            try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN secondary_category TO genre_categories"))
+                conn.commit()
+                print("✅ Renamed secondary_category to genre_categories")
             except Exception as e:
                 print(f"⚠️ Failed to rename secondary_category: {e}")
+        elif 'secondary_categories' in columns and 'genre_categories' not in columns:
+             print("🔄 Migrating: Renaming secondary_categories to genre_categories...")
+             try:
+                conn.execute(text("ALTER TABLE posts RENAME COLUMN secondary_categories TO genre_categories"))
+                conn.commit()
+                print("✅ Renamed secondary_categories to genre_categories")
+             except Exception as e:
+                print(f"⚠️ Failed to rename secondary_categories: {e}")
 
-        # 5. Check Favorites table for 'id' column
+        # 5. Add new columns: cast, mood, editing
+        new_cols = ['cast_categories', 'mood_categories', 'editing_categories']
+        for col_name in new_cols:
+            if col_name not in columns:
+                print(f"🔄 Migrating: Adding {col_name} column...")
+                try:
+                    # JSON type support varies, using Text or JSON depending on DB
+                    # SQLAlchemy JSON type usually maps to JSON in Postgres and JSON/TEXT in SQLite
+                    # Here we use generic ADD COLUMN. SQLite doesn't support JSON type in ALTER TABLE easily without extensions sometimes, 
+                    # but SQLAlchemy handles it if we define it in model. 
+                    # For raw SQL:
+                    conn.execute(text(f"ALTER TABLE posts ADD COLUMN {col_name} JSON DEFAULT '[]'"))
+                    conn.commit()
+                    print(f"✅ Added {col_name} column")
+                except Exception as e:
+                    print(f"⚠️ Failed to add {col_name} (trying TEXT fallback): {e}")
+                    try:
+                        conn.execute(text(f"ALTER TABLE posts ADD COLUMN {col_name} TEXT DEFAULT '[]'"))
+                        conn.commit()
+                        print(f"✅ Added {col_name} column (TEXT)")
+                    except Exception as e2:
+                         print(f"⚠️ Failed to add {col_name}: {e2}")
+
+        # 6. Check Favorites table for 'id' column
         if 'favorites' in inspector.get_table_names():
             fav_columns = [col['name'] for col in inspector.get_columns('favorites')]
             if 'id' not in fav_columns:
@@ -115,6 +154,16 @@ def check_and_migrate_db():
                         print("✅ Added id column to favorites (SQLite method)")
                     except Exception as e2:
                         print(f"⚠️ Failed to add id column to favorites (SQLite method): {e2}")
+
+        # 7. Migrate Category Types (Data Migration)
+        # primary -> industry, secondary -> genre
+        try:
+            conn.execute(text("UPDATE categories SET type='industry' WHERE type='primary'"))
+            conn.execute(text("UPDATE categories SET type='genre' WHERE type='secondary'"))
+            conn.commit()
+            print("✅ Migrated category types (primary->industry, secondary->genre)")
+        except Exception as e:
+            print(f"⚠️ Failed to migrate category types: {e}")
 
 # 마이그레이션 실행
 try:
@@ -425,10 +474,13 @@ def get_categories(db: Session = Depends(get_db)):
     # 이름순 정렬하여 조회
     categories = db.query(Category).order_by(Category.name).all()
     
-    primary = [{"id": c.id, "name": c.name} for c in categories if c.type == "primary"]
-    secondary = [{"id": c.id, "name": c.name} for c in categories if c.type == "secondary"]
-    
-    return {"primary": primary, "secondary": secondary}
+    return {
+        "industry": [{"id": c.id, "name": c.name} for c in categories if c.type == "industry"],
+        "genre": [{"id": c.id, "name": c.name} for c in categories if c.type == "genre"],
+        "cast": [{"id": c.id, "name": c.name} for c in categories if c.type == "cast"],
+        "mood": [{"id": c.id, "name": c.name} for c in categories if c.type == "mood"],
+        "editing": [{"id": c.id, "name": c.name} for c in categories if c.type == "editing"],
+    }
 
 
 @app.post("/api/categories", response_model=CategoryResponse)
@@ -525,8 +577,12 @@ def create_post(
             thumbnail=thumbnail,
             platform="youtube",
             video_type=video_type,
-            primary_categories=post_data.primary_categories,
-            secondary_categories=post_data.secondary_categories,
+
+            industry_categories=post_data.industry_categories,
+            genre_categories=post_data.genre_categories,
+            cast_categories=post_data.cast_categories,
+            mood_categories=post_data.mood_categories,
+            editing_categories=post_data.editing_categories,
             memo=post_data.memo,
             user_id=current_user.id
         )
@@ -578,8 +634,11 @@ def create_post(
 def get_posts(
     page: int = 1,
     limit: int = 20,
-    primary_category: List[str] = Query(None),
-    secondary_category: List[str] = Query(None),
+    industry_category: List[str] = Query(None),
+    genre_category: List[str] = Query(None),
+    cast_category: List[str] = Query(None),
+    mood_category: List[str] = Query(None),
+    editing_category: List[str] = Query(None),
     filter_logic: str = "AND",
     video_type: Optional[str] = None,
     search: Optional[str] = None,
@@ -647,21 +706,28 @@ def get_posts(
             pass
     
     # 4. Category Filter (JSON List Filtering)
-    if primary_category:
-        if filter_logic == 'AND':
-            for cat_id in primary_category:
-                query = query.filter(DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%'))
+    # 4. Category Filter (JSON List Filtering)
+    # Helper for category filtering
+    def apply_cat_filter(q, col, values, logic):
+        if not values: return q
+        if logic == 'AND':
+            for val in values:
+                q = q.filter(col.cast(String).like(f'%"{val}"%'))
         else: # OR
-            conditions = [DBPost.primary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in primary_category]
-            query = query.filter(or_(*conditions))
+            conditions = [col.cast(String).like(f'%"{val}"%') for val in values]
+            q = q.filter(or_(*conditions))
+        return q
 
-    if secondary_category:
-        if filter_logic == 'AND':
-            for cat_id in secondary_category:
-                query = query.filter(DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%'))
-        else: # OR
-            conditions = [DBPost.secondary_categories.cast(String).like(f'%"{cat_id}"%') for cat_id in secondary_category]
-            query = query.filter(or_(*conditions))
+    if industry_category:
+        query = apply_cat_filter(query, DBPost.industry_categories, industry_category, filter_logic)
+    if genre_category:
+        query = apply_cat_filter(query, DBPost.genre_categories, genre_category, filter_logic)
+    if cast_category:
+        query = apply_cat_filter(query, DBPost.cast_categories, cast_category, filter_logic)
+    if mood_category:
+        query = apply_cat_filter(query, DBPost.mood_categories, mood_category, filter_logic)
+    if editing_category:
+        query = apply_cat_filter(query, DBPost.editing_categories, editing_category, filter_logic)
         
     # Pagination & Sorting
     # Mix (Random Shuffle)
@@ -697,16 +763,14 @@ def get_posts(
                 post.author_name = post.author.name
             
             # JSON 파싱 보정 (DB에 문자열로 저장된 경우)
-            if isinstance(post.primary_categories, str):
-                try:
-                    post.primary_categories = json.loads(post.primary_categories)
-                except:
-                    post.primary_categories = []
-            if isinstance(post.secondary_categories, str):
-                try:
-                    post.secondary_categories = json.loads(post.secondary_categories)
-                except:
-                    post.secondary_categories = []
+            # JSON 파싱 보정 (DB에 문자열로 저장된 경우)
+            for attr in ['industry_categories', 'genre_categories', 'cast_categories', 'mood_categories', 'editing_categories']:
+                val = getattr(post, attr)
+                if isinstance(val, str):
+                    try:
+                        setattr(post, attr, json.loads(val))
+                    except:
+                        setattr(post, attr, [])
         print("DEBUG: Author names and categories processed")
             
         # 좋아요 여부 확인
@@ -753,16 +817,15 @@ def get_post(
     
     # JSON 파싱 보정
     import json
-    if isinstance(post.primary_categories, str):
-        try:
-            post.primary_categories = json.loads(post.primary_categories)
-        except:
-            post.primary_categories = []
-    if isinstance(post.secondary_categories, str):
-        try:
-            post.secondary_categories = json.loads(post.secondary_categories)
-        except:
-            post.secondary_categories = []
+    # JSON 파싱 보정
+    import json
+    for attr in ['industry_categories', 'genre_categories', 'cast_categories', 'mood_categories', 'editing_categories']:
+        val = getattr(post, attr)
+        if isinstance(val, str):
+            try:
+                setattr(post, attr, json.loads(val))
+            except:
+                setattr(post, attr, [])
 
     # 작성자 이름 설정
     if post.author:

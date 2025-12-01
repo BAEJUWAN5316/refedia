@@ -66,19 +66,38 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                     <h3 className="post-title" title={post.title}>{post.title}</h3>
 
                     <div className="post-tags">
-                        {post.primary_categories && post.primary_categories
-                            .map(id => ({ id, name: getCategoryName(id, 'primary') }))
-                            .sort((a, b) => a.name.localeCompare(b.name))
+                        {post.industry_categories && post.industry_categories.slice(0, 2)
+                            .map(id => ({ id, name: getCategoryName(id, 'industry') }))
                             .map(cat => (
                                 <span key={cat.id} className="badge badge-primary">
                                     {cat.name}
                                 </span>
                             ))}
-                        {post.secondary_categories && post.secondary_categories
-                            .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
-                            .sort((a, b) => a.name.localeCompare(b.name))
+                        {post.genre_categories && post.genre_categories.slice(0, 2)
+                            .map(id => ({ id, name: getCategoryName(id, 'genre') }))
                             .map(cat => (
                                 <span key={cat.id} className="badge badge-secondary">
+                                    {cat.name}
+                                </span>
+                            ))}
+                        {post.cast_categories && post.cast_categories.slice(0, 1)
+                            .map(id => ({ id, name: getCategoryName(id, 'cast') }))
+                            .map(cat => (
+                                <span key={cat.id} className="badge badge-secondary" style={{ background: '#e0f2f1', color: '#00695c' }}>
+                                    {cat.name}
+                                </span>
+                            ))}
+                        {post.mood_categories && post.mood_categories.slice(0, 1)
+                            .map(id => ({ id, name: getCategoryName(id, 'mood') }))
+                            .map(cat => (
+                                <span key={cat.id} className="badge badge-secondary" style={{ background: '#f3e5f5', color: '#7b1fa2' }}>
+                                    {cat.name}
+                                </span>
+                            ))}
+                        {post.editing_categories && post.editing_categories.slice(0, 1)
+                            .map(id => ({ id, name: getCategoryName(id, 'editing') }))
+                            .map(cat => (
+                                <span key={cat.id} className="badge badge-secondary" style={{ background: '#fff3e0', color: '#e65100' }}>
                                     {cat.name}
                                 </span>
                             ))}

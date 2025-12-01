@@ -13,12 +13,17 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
     const [isEditing, setIsEditing] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
     const [editedMemo, setEditedMemo] = useState('');
-    const [editedPrimary, setEditedPrimary] = useState([]);
-    const [editedSecondary, setEditedSecondary] = useState([]);
+    const [editedIndustry, setEditedIndustry] = useState([]);
+    const [editedGenre, setEditedGenre] = useState([]);
+    const [editedCast, setEditedCast] = useState([]);
+    const [editedMood, setEditedMood] = useState([]);
+    const [editedEditing, setEditedEditing] = useState([]);
     const [editedVideoType, setEditedVideoType] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [categories, setCategories] = useState({ primary: [], secondary: [] });
+    const [categories, setCategories] = useState({
+        industry: [], genre: [], cast: [], mood: [], editing: []
+    });
     const [copyUrlText, setCopyUrlText] = useState('Copy');
     const [isSaving, setIsSaving] = useState(false);
     const [isThumbnailCopied, setIsThumbnailCopied] = useState(false);
@@ -41,8 +46,11 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
             setPost(data);
             setEditedTitle(data.title);
             setEditedMemo(data.memo || '');
-            setEditedPrimary(data.primary_categories || []);
-            setEditedSecondary(data.secondary_categories || []);
+            setEditedIndustry(data.industry_categories || []);
+            setEditedGenre(data.genre_categories || []);
+            setEditedCast(data.cast_categories || []);
+            setEditedMood(data.mood_categories || []);
+            setEditedEditing(data.editing_categories || []);
             setEditedVideoType(data.video_type || 'short');
             setIsFavorited(data.is_favorited);
         } catch (err) {
@@ -63,7 +71,8 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
     };
 
     const getCategoryName = (id, type) => {
-        const list = type === 'primary' ? categories.primary : categories.secondary;
+        // type: 'industry', 'genre', 'cast', 'mood', 'editing'
+        const list = categories[type] || [];
         const cat = list.find(c => c.id === id);
         return cat ? cat.name : id;
     };
@@ -107,8 +116,11 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
                 body: JSON.stringify({
                     title: editedTitle,
                     memo: editedMemo,
-                    primary_categories: editedPrimary,
-                    secondary_categories: editedSecondary,
+                    industry_categories: editedIndustry,
+                    genre_categories: editedGenre,
+                    cast_categories: editedCast,
+                    mood_categories: editedMood,
+                    editing_categories: editedEditing,
                     video_type: editedVideoType
                 })
             });
@@ -278,19 +290,43 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
                     {!isEditing && (
                         <>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {post.primary_categories && post.primary_categories
-                                    .map(id => ({ id, name: getCategoryName(id, 'primary') }))
+                                {post.industry_categories && post.industry_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'industry') }))
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map(cat => (
                                         <span key={cat.id} className="badge badge-primary">
                                             {cat.name}
                                         </span>
                                     ))}
-                                {post.secondary_categories && post.secondary_categories
-                                    .map(id => ({ id, name: getCategoryName(id, 'secondary') }))
+                                {post.genre_categories && post.genre_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'genre') }))
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map(cat => (
                                         <span key={cat.id} className="badge badge-secondary">
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                {post.cast_categories && post.cast_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'cast') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-secondary" style={{ background: '#e0f2f1', color: '#00695c' }}>
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                {post.mood_categories && post.mood_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'mood') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-secondary" style={{ background: '#f3e5f5', color: '#7b1fa2' }}>
+                                            {cat.name}
+                                        </span>
+                                    ))}
+                                {post.editing_categories && post.editing_categories
+                                    .map(id => ({ id, name: getCategoryName(id, 'editing') }))
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(cat => (
+                                        <span key={cat.id} className="badge badge-secondary" style={{ background: '#fff3e0', color: '#e65100' }}>
                                             {cat.name}
                                         </span>
                                     ))}
@@ -386,18 +422,36 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
                                         rows={4}
                                     />
                                 </div>
-                                <div className="grid grid-2" style={{ gap: '1rem' }}>
+                                <div className="grid grid-2" style={{ gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
                                     <CategorySelector
                                         categories={categories}
-                                        type="primary"
-                                        selected={editedPrimary}
-                                        onChange={setEditedPrimary}
+                                        type="industry"
+                                        selected={editedIndustry}
+                                        onChange={setEditedIndustry}
                                     />
                                     <CategorySelector
                                         categories={categories}
-                                        type="secondary"
-                                        selected={editedSecondary}
-                                        onChange={setEditedSecondary}
+                                        type="genre"
+                                        selected={editedGenre}
+                                        onChange={setEditedGenre}
+                                    />
+                                    <CategorySelector
+                                        categories={categories}
+                                        type="cast"
+                                        selected={editedCast}
+                                        onChange={setEditedCast}
+                                    />
+                                    <CategorySelector
+                                        categories={categories}
+                                        type="mood"
+                                        selected={editedMood}
+                                        onChange={setEditedMood}
+                                    />
+                                    <CategorySelector
+                                        categories={categories}
+                                        type="editing"
+                                        selected={editedEditing}
+                                        onChange={setEditedEditing}
                                     />
                                 </div>
                                 <div className="input-group">

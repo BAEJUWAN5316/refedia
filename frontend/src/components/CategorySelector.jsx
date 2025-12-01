@@ -1,5 +1,6 @@
 export default function CategorySelector({ categories, selected, onChange, type }) {
-    const categoryList = type === 'primary' ? categories.primary : categories.secondary;
+    // type: 'industry', 'genre', 'cast', 'mood', 'editing'
+    const categoryList = categories[type] || [];
 
     const toggleCategory = (categoryId) => {
         if (selected.includes(categoryId)) {
@@ -9,11 +10,21 @@ export default function CategorySelector({ categories, selected, onChange, type 
         }
     };
 
+    const getLabel = () => {
+        switch (type) {
+            case 'industry': return '업종 (Industry)';
+            case 'genre': return '장르 (Genre)';
+            case 'cast': return '출연자 (Cast)';
+            case 'mood': return '분위기 (Mood)';
+            case 'editing': return '편집/효과 (Editing)';
+            default: return 'Categories';
+        }
+    };
+
     return (
         <div className="input-group">
             <label className="input-label">
-                {type === 'primary' ? 'Primary Categories' : 'Secondary Categories'}
-                <span style={{ color: 'var(--error)' }}> *</span>
+                {getLabel()}
             </label>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {categoryList.map((cat) => (

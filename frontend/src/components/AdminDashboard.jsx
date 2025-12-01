@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 export default function AdminDashboard({ onClose, categories, onCategoriesChanged, currentUser }) {
     const [users, setUsers] = useState([]);
     const [newCategory, setNewCategory] = useState('');
-    const [newCategoryType, setNewCategoryType] = useState('primary');
+    const [newCategoryType, setNewCategoryType] = useState('industry');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -244,41 +244,39 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
                                 onChange={(e) => setNewCategoryType(e.target.value)}
                                 style={{ width: 'auto' }}
                             >
-                                <option value="primary">Primary</option>
-                                <option value="secondary">Secondary</option>
+                                <option value="industry">Industry (업종)</option>
+                                <option value="genre">Genre (장르)</option>
+                                <option value="cast">Cast (출연자)</option>
+                                <option value="mood">Mood (분위기)</option>
+                                <option value="editing">Editing (편집/효과)</option>
                             </select>
                             <button type="submit" className="btn btn-primary">
                                 ➕ Add
                             </button>
                         </form>
 
-                        <div className="grid grid-2">
-                            <div>
-                                <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Primary Categories</h5>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {categories.primary.map(cat => (
-                                        <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                            <span>{cat.name}</span>
-                                            <button className="btn btn-sm btn-danger" onClick={() => deleteCategory(cat.id)}>
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    ))}
+                        <div className="grid grid-2" style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                            {[
+                                { key: 'industry', label: 'Industry (업종)' },
+                                { key: 'genre', label: 'Genre (장르)' },
+                                { key: 'cast', label: 'Cast (출연자)' },
+                                { key: 'mood', label: 'Mood (분위기)' },
+                                { key: 'editing', label: 'Editing (편집/효과)' }
+                            ].map(type => (
+                                <div key={type.key}>
+                                    <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>{type.label}</h5>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {categories[type.key] && categories[type.key].map(cat => (
+                                            <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                                <span>{cat.name}</span>
+                                                <button className="btn btn-sm btn-danger" onClick={() => deleteCategory(cat.id)}>
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Secondary Categories</h5>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {categories.secondary.map(cat => (
-                                        <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                            <span>{cat.name}</span>
-                                            <button className="btn btn-sm btn-danger" onClick={() => deleteCategory(cat.id)}>
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </section>
                 </div>

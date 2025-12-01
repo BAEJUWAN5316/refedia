@@ -36,8 +36,11 @@ class Post(Base):
     thumbnail = Column(String)  # 썸네일 URL
     platform = Column(String, default="youtube")
     video_type = Column(String, nullable=False)  # 'long' or 'short'
-    primary_categories = Column(JSON, default=list)  # Primary 카테고리 목록
-    secondary_categories = Column(JSON, default=list)  # Secondary 카테고리 목록
+    industry_categories = Column(JSON, default=list)  # 업종 (Industry)
+    genre_categories = Column(JSON, default=list)     # 장르 (Genre)
+    cast_categories = Column(JSON, default=list)      # 출연자 (Cast)
+    mood_categories = Column(JSON, default=list)      # 분위기 (Mood)
+    editing_categories = Column(JSON, default=list)   # 편집/효과 (Editing)
     memo = Column(Text)
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())

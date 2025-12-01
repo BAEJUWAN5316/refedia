@@ -25,6 +25,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('all'); // 'all', 'my_posts', 'favorites'
   const [categories, setCategories] = useState({ primary: [], secondary: [] });
+  const [feedKey, setFeedKey] = useState(0); // Key to force re-render of Feed
 
   // Initial Auth Check
   useEffect(() => {
@@ -75,6 +76,12 @@ function App() {
     setShowLogin(true);
   };
 
+  const handleLogoClick = () => {
+    setSearchQuery('');
+    setViewMode('all');
+    setFeedKey(prev => prev + 1); // Force Feed to re-mount and reset its internal state
+  };
+
   return (
     <Router>
       <div className="app">
@@ -87,6 +94,7 @@ function App() {
           onLogoutClick={handleLogout}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          onLogoClick={handleLogoClick}
         />
 
         <main className="container">
@@ -94,6 +102,7 @@ function App() {
             <Routes>
               <Route path="/" element={
                 <Feed
+                  key={feedKey}
                   currentUser={currentUser}
                   viewMode={viewMode}
                   searchQuery={searchQuery}

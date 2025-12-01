@@ -7,11 +7,17 @@ export default function PostCreate({ onClose, onPostCreated }) {
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [categories, setCategories] = useState({ primary: [], secondary: [] });
+    const [categories, setCategories] = useState({
+        industry: [], genre: [], cast: [], mood: [], editing: []
+    });
 
     // Form State
-    const [primaryCats, setPrimaryCats] = useState([]);
-    const [secondaryCats, setSecondaryCats] = useState([]);
+    const [industryCats, setIndustryCats] = useState([]);
+    const [genreCats, setGenreCats] = useState([]);
+    const [castCats, setCastCats] = useState([]);
+    const [moodCats, setMoodCats] = useState([]);
+    const [editingCats, setEditingCats] = useState([]);
+
     const [memo, setMemo] = useState('');
 
     // Fetch categories on mount
@@ -54,8 +60,11 @@ export default function PostCreate({ onClose, onPostCreated }) {
                 },
                 body: JSON.stringify({
                     url,
-                    primary_categories: primaryCats,
-                    secondary_categories: secondaryCats,
+                    industry_categories: industryCats,
+                    genre_categories: genreCats,
+                    cast_categories: castCats,
+                    mood_categories: moodCats,
+                    editing_categories: editingCats,
                     memo
                 })
             });
@@ -105,29 +114,68 @@ export default function PostCreate({ onClose, onPostCreated }) {
                         />
                     </div>
 
-                    <div className="grid grid-2" style={{ gap: '1.5rem' }}>
+                    <div className="grid grid-2" style={{ gap: '1.5rem', gridTemplateColumns: '1fr 1fr' }}>
                         <div className="input-group">
                             <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
-                                Primary Category
+                                업종 (Industry)
                             </label>
                             <CategorySelector
                                 categories={categories}
-                                type="primary"
-                                selected={primaryCats}
-                                onChange={setPrimaryCats}
+                                type="industry"
+                                selected={industryCats}
+                                onChange={setIndustryCats}
                                 maxSelect={1}
                             />
                         </div>
 
                         <div className="input-group">
                             <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
-                                Secondary Category
+                                장르 (Genre)
                             </label>
                             <CategorySelector
                                 categories={categories}
-                                type="secondary"
-                                selected={secondaryCats}
-                                onChange={setSecondaryCats}
+                                type="genre"
+                                selected={genreCats}
+                                onChange={setGenreCats}
+                                maxSelect={1}
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                                출연자 (Cast)
+                            </label>
+                            <CategorySelector
+                                categories={categories}
+                                type="cast"
+                                selected={castCats}
+                                onChange={setCastCats}
+                                maxSelect={1}
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                                분위기 (Mood)
+                            </label>
+                            <CategorySelector
+                                categories={categories}
+                                type="mood"
+                                selected={moodCats}
+                                onChange={setMoodCats}
+                                maxSelect={1}
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block', fontWeight: '500' }}>
+                                편집/효과 (Editing)
+                            </label>
+                            <CategorySelector
+                                categories={categories}
+                                type="editing"
+                                selected={editingCats}
+                                onChange={setEditingCats}
                                 maxSelect={1}
                             />
                         </div>

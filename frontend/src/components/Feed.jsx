@@ -7,11 +7,17 @@ import { API_URL } from '../config';
 export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
     // Data State
     const [posts, setPosts] = useState([]);
-    const [categories, setCategories] = useState({ primary: [], secondary: [] });
+    const [categories, setCategories] = useState({
+        industry: [], genre: [], cast: [], mood: [], editing: []
+    });
 
     // Filter State
-    const [selectedPrimary, setSelectedPrimary] = useState([]);
-    const [selectedSecondary, setSelectedSecondary] = useState([]);
+    const [selectedIndustry, setSelectedIndustry] = useState([]);
+    const [selectedGenre, setSelectedGenre] = useState([]);
+    const [selectedCast, setSelectedCast] = useState([]);
+    const [selectedMood, setSelectedMood] = useState([]);
+    const [selectedEditing, setSelectedEditing] = useState([]);
+
     const [filterLogic, setFilterLogic] = useState('AND');
     const [selectedVideoType, setSelectedVideoType] = useState('all');
     const [startDate, setStartDate] = useState('');
@@ -64,8 +70,11 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
                 params.append('seed', seed);
             }
 
-            selectedPrimary.forEach(id => params.append('primary_category', id));
-            selectedSecondary.forEach(id => params.append('secondary_category', id));
+            selectedIndustry.forEach(id => params.append('industry_category', id));
+            selectedGenre.forEach(id => params.append('genre_category', id));
+            selectedCast.forEach(id => params.append('cast_category', id));
+            selectedMood.forEach(id => params.append('mood_category', id));
+            selectedEditing.forEach(id => params.append('editing_category', id));
 
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/posts?${params.toString()}`, {
@@ -76,8 +85,6 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
 
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
-                    // Token expired or invalid - handled by App.jsx usually, but we can just fail here
-                    // Ideally App.jsx handles logout. We can trigger a callback if needed.
                     return;
                 }
                 throw new Error('Failed to fetch posts');
@@ -97,7 +104,7 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
         } finally {
             setLoading(false);
         }
-    }, [currentUser, selectedPrimary, selectedSecondary, filterLogic, selectedVideoType, searchQuery, startDate, endDate, viewMode, seed]);
+    }, [currentUser, selectedIndustry, selectedGenre, selectedCast, selectedMood, selectedEditing, filterLogic, selectedVideoType, searchQuery, startDate, endDate, viewMode, seed]);
 
     // Filter Change Effect
     useEffect(() => {
@@ -127,7 +134,8 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
     }, [loading, hasMore]);
 
     const getCategoryName = (id, type) => {
-        const list = type === 'primary' ? categories.primary : categories.secondary;
+        // type: 'industry', 'genre', 'cast', 'mood', 'editing'
+        const list = categories[type] || [];
         const cat = list.find(c => c.id === id);
         return cat ? cat.name : '';
     };
@@ -136,7 +144,6 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
         const newSeed = Math.floor(Math.random() * 1000000);
         setSeed(newSeed);
         setPage(1);
-        // fetchPosts(1) will be triggered by useEffect dependency on seed/fetchPosts
     };
 
     const handleResetSort = () => {
@@ -148,10 +155,17 @@ export default function Feed({ currentUser, viewMode, searchQuery, onSearch }) {
         <>
             <CategoryFilter
                 categories={categories}
-                selectedPrimary={selectedPrimary}
-                onSelectPrimary={setSelectedPrimary}
-                selectedSecondary={selectedSecondary}
-                onSelectSecondary={setSelectedSecondary}
+                selectedIndustry={selectedIndustry}
+                onSelectIndustry={setSelectedIndustry}
+                selectedGenre={selectedGenre}
+                onSelectGenre={setSelectedGenre}
+                selectedCast={selectedCast}
+                onSelectCast={setSelectedCast}
+                selectedMood={selectedMood}
+                onSelectMood={setSelectedMood}
+                selectedEditing={selectedEditing}
+                onSelectEditing={setSelectedEditing}
+
                 filterLogic={filterLogic}
                 onToggleLogic={setFilterLogic}
                 selectedVideoType={selectedVideoType}

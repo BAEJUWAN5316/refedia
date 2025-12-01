@@ -2,10 +2,11 @@ import React from 'react';
 
 export default function CategoryFilter({
     categories,
-    selectedPrimary,
-    onSelectPrimary,
-    selectedSecondary,
-    onSelectSecondary,
+    selectedIndustry, onSelectIndustry,
+    selectedGenre, onSelectGenre,
+    selectedCast, onSelectCast,
+    selectedMood, onSelectMood,
+    selectedEditing, onSelectEditing,
     filterLogic,
     onToggleLogic,
     selectedVideoType,
@@ -19,6 +20,29 @@ export default function CategoryFilter({
             setSelection([...currentSelected, id]);
         }
     };
+
+    const renderCategoryGroup = (title, list, selected, onSelect) => (
+        <div style={{ width: '100%' }}>
+            <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>{title}</h5>
+            <div className="filter-group" style={{ flexWrap: 'wrap' }}>
+                <button
+                    className={`btn ${selected.length === 0 ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => onSelect([])}
+                >
+                    All
+                </button>
+                {list && list.map(cat => (
+                    <button
+                        key={cat.id}
+                        className={`btn ${selected.includes(cat.id) ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => toggleSelection(cat.id, selected, onSelect)}
+                    >
+                        {cat.name}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
 
     return (
         <div className="filter-section" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
@@ -110,49 +134,11 @@ export default function CategoryFilter({
                 </div>
             </div>
 
-            {/* Primary Categories */}
-            <div style={{ width: '100%' }}>
-                <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Primary Categories</h5>
-                <div className="filter-group" style={{ flexWrap: 'wrap' }}>
-                    <button
-                        className={`btn ${selectedPrimary.length === 0 ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => onSelectPrimary([])}
-                    >
-                        All
-                    </button>
-                    {categories.primary.map(cat => (
-                        <button
-                            key={cat.id}
-                            className={`btn ${selectedPrimary.includes(cat.id) ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => toggleSelection(cat.id, selectedPrimary, onSelectPrimary)}
-                        >
-                            {cat.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Secondary Categories */}
-            <div style={{ width: '100%' }}>
-                <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Secondary Categories</h5>
-                <div className="filter-group" style={{ flexWrap: 'wrap' }}>
-                    <button
-                        className={`btn ${selectedSecondary.length === 0 ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => onSelectSecondary([])}
-                    >
-                        All
-                    </button>
-                    {categories.secondary.map(cat => (
-                        <button
-                            key={cat.id}
-                            className={`btn ${selectedSecondary.includes(cat.id) ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => toggleSelection(cat.id, selectedSecondary, onSelectSecondary)}
-                        >
-                            {cat.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {renderCategoryGroup("업종 (Industry)", categories.industry, selectedIndustry, onSelectIndustry)}
+            {renderCategoryGroup("장르 (Genre)", categories.genre, selectedGenre, onSelectGenre)}
+            {renderCategoryGroup("출연자 (Cast)", categories.cast, selectedCast, onSelectCast)}
+            {renderCategoryGroup("분위기 (Mood)", categories.mood, selectedMood, onSelectMood)}
+            {renderCategoryGroup("편집/효과 (Editing)", categories.editing, selectedEditing, onSelectEditing)}
         </div>
     );
 }

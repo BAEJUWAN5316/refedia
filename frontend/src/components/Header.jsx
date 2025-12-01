@@ -1,4 +1,4 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import refediaLogo from '../../assets/refedia.png';
 
@@ -10,13 +10,20 @@ export default function Header({
     onLoginClick,
     onLogoutClick,
     viewMode,
-    onViewModeChange
+    onViewModeChange,
+    onLogoClick
 }) {
     return (
         <header className="header">
             <div className="container header-content">
                 <div className="logo-section">
-                    <img src={refediaLogo} alt="Refedia" style={{ width: '150px', height: 'auto' }} />
+                    <Link
+                        to="/"
+                        onClick={onLogoClick}
+                        style={{ display: 'block', textDecoration: 'none' }}
+                    >
+                        <img src={refediaLogo} alt="Refedia" style={{ width: '150px', height: 'auto', display: 'block' }} />
+                    </Link>
                 </div>
 
                 {currentUser && (
@@ -76,7 +83,7 @@ export default function Header({
                         </button>
                     )}
                 </div>
-            </div>
-        </header>
+            </div >
+        </header >
     );
 }
