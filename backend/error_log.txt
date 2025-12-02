@@ -803,3 +803,43 @@ Traceback (most recent call last):
 AttributeError: 'PostUpdate' object has no attribute 'primary_categories'. Did you mean: 'cast_categories'?
 
 --------------------------------------------------
+Create Post Error time: 2025-12-02 22:09:13.135925
+Error: name 'title' is not defined
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 577, in create_post
+    title=title,
+          ^^^^^
+NameError: name 'title' is not defined. Did you mean: 'time'?
+
+--------------------------------------------------
+Create Post Error time: 2025-12-02 22:09:20.378929
+Error: name 'title' is not defined
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 577, in create_post
+    title=title,
+          ^^^^^
+NameError: name 'title' is not defined. Did you mean: 'time'?
+
+--------------------------------------------------
+Create Post Error time: 2025-12-02 22:11:43.202557
+Error: name 'title' is not defined
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 577, in create_post
+    title=title,
+          ^^^^^
+NameError: name 'title' is not defined. Did you mean: 'time'?
+
+--------------------------------------------------
+Create Post Error time: 2025-12-02 22:13:19.139826
+Error: name 'title' is not defined
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\p-d0574\Desktop\develop\레퍼런스 저장소2\refepidia\backend\app_main.py", line 577, in create_post
+    title=title,
+          ^^^^^
+NameError: name 'title' is not defined. Did you mean: 'time'?
+
+--------------------------------------------------

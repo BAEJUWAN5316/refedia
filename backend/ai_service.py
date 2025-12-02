@@ -111,7 +111,8 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
         model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
         
         sys.stderr.write(f"🚀 Sending request to Gemini with {len(contents)} content items...\n")
-        response = model.generate_content(contents)
+        # 30초 타임아웃 설정
+        response = model.generate_content(contents, request_options={'timeout': 30})
         sys.stderr.write("✅ Gemini response received\n")
         
         # 응답 텍스트 정제

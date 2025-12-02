@@ -570,6 +570,22 @@ def create_post(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Post with this URL already exists"
             )
+            
+        # YouTube 메타데이터 추출
+        try:
+            from youtube_service import extract_youtube_metadata
+            title, thumbnail, video_type, _, _ = extract_youtube_metadata(url_str)
+            if not title:
+                title = "Unknown Title"
+            if not thumbnail:
+                thumbnail = ""
+            if not video_type:
+                video_type = "long"
+        except Exception as e:
+            print(f"⚠️ Metadata extraction failed: {e}")
+            title = "Unknown Title"
+            thumbnail = ""
+            video_type = "long"
         
         # 게시물 생성
         new_post = DBPost(

@@ -166,8 +166,8 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
                     'player_client': ['android', 'web'],
                 }
             },
-            'socket_timeout': 15,
-            'retries': 0,  # 재시도 금지
+            'socket_timeout': 5,   # 5초로 단축 (빠른 포기)
+            'retries': 0,
             'fragment_retries': 0,
         }
         
