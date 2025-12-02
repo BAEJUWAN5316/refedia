@@ -148,25 +148,24 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
             temp_video_path = tmp_file.name
         
-        # YouTube 영상 다운로드 (최고 화질)
+        # YouTube 영상 다운로드 (속도 최적화를 위해 360p 제한)
         ydl_opts = {
-            'format': 'best[ext=mp4]/best',
+            'format': 'best[height<=360][ext=mp4]/best[height<=360]/best',
             'outtmpl': temp_video_path,
             'quiet': True,
             'no_warnings': True,
             'overwrites': True,
             'nocheckcertificate': True,
-            'ignoreerrors': True, # Keep this to handle errors manually via file size check
+            'ignoreerrors': True,
             'no_check_certificate': True,
             'geo_bypass': True,
             'ffmpeg_location': ffmpeg_path,
-            # 봇 탐지 회피를 위한 안드로이드 클라이언트 에뮬레이션
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
                 }
             },
-            'socket_timeout': 5,   # 5초로 단축 (빠른 포기)
+            'socket_timeout': 5,
             'retries': 0,
             'fragment_retries': 0,
         }
@@ -176,12 +175,12 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             info = ydl.extract_info(url, download=False)
             duration = info.get('duration', 0)
             
-            # 5분(300초) 이상이면 프레임 추출 스킵 (시간 절약)
-            if duration > 300:
+            # 3분(180초) 이상이면 프레임 추출 스킵
+            if duration > 180:
                 print(f"⚠️ Video is too long ({duration}s). Skipping frame extraction to save time.")
                 return []
                 
-            print(f"🎬 Downloading video from {url} to {temp_video_path}...")
+            print(f"🎬 Downloading video (360p) from {url} to {temp_video_path}...")
             ydl.download([url])
         
         # 파일 확인

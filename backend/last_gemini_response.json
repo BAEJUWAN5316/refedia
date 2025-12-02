@@ -1,30 +1,30 @@
 {
   "industry": [
     {
-      "id": "31768c8e-19d2-4bc8-b9d3-906f3704111e",
-      "name": "엔터테인먼트"
+      "id": "78f60a8b-0a3a-4163-a70a-6b1a519e9472",
+      "name": "기타"
     }
   ],
   "genre": [
     {
-      "id": "8ed5b2c8-134b-41b8-827e-3fa5ba9febe2",
-      "name": "팬덤"
+      "id": "79749774-a185-4d05-bc37-9ec7251f0d3c",
+      "name": "토크쇼"
     }
   ],
   "cast": [
     {
-      "id": "4e5b1344-ce7a-4ad9-a6ec-b8305034e87d",
-      "name": "가수"
+      "id": "6a4cae62-dd15-4d16-967a-08411bce0f3e",
+      "name": "인플루언서"
     },
     {
-      "id": "d320a16c-48b6-4f7f-a3c4-007fb84f5392",
-      "name": "없음"
+      "id": "35f9edc7-693f-4ba4-bca2-127313ef27ad",
+      "name": "방송인"
     }
   ],
   "mood": [
     {
-      "id": "27ca94be-964c-4ccf-b45c-283e0c7a8352",
-      "name": "진지"
+      "id": "5a79da42-5143-488d-8f7c-0ba1ca21907f",
+      "name": "유머"
     }
   ],
   "editing": [
