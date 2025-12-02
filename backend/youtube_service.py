@@ -9,10 +9,10 @@ from typing import Optional, Tuple, List
 from redis_cache import get_cached_frames, set_cached_frames
 
 
-def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], str, Optional[str]]:
+def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], str, Optional[str], Optional[str]]:
     """
     YouTube URL에서 메타데이터 추출
-    Returns: (title, thumbnail_url, video_type, description)
+    Returns: (title, thumbnail_url, video_type, description, channel_name)
     """
     print(f"🔍 Extracting metadata for: {url}")
     
@@ -25,27 +25,17 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
             data = response.json()
             title = data.get('title')
             thumbnail = data.get('thumbnail_url')
+            channel_name = data.get('author_name')
             # oEmbed doesn't provide description, so we might need fallback or just use title
             description = "" 
             video_type = 'short' if '/shorts/' in url else 'long'
-            print(f"✅ oEmbed extraction successful: {title}")
+            print(f"✅ oEmbed extraction successful: {title} ({channel_name})")
             
             # Force maxresdefault if possible
             if video_id := (url.split('v=')[1].split('&')[0] if 'v=' in url else None):
                     thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
             
-            # oEmbed 성공하더라도 설명이 없으므로 yt-dlp 시도해볼 가치는 있음.
-            # 하지만 속도를 위해 일단 oEmbed 성공 시 설명은 비워두거나, 
-            # 필요하다면 yt-dlp를 '설명 추출용'으로만 돌릴 수도 있음.
-            # 여기서는 일단 oEmbed가 빠르니 이걸 쓰고, 설명이 꼭 필요하면 아래 yt-dlp로 넘어가는 로직을 추가할 수 있음.
-            # 사용자 요청은 "AI가 분석"이므로 설명이 있으면 좋음.
-            # oEmbed는 설명을 안 주므로, AI 분석을 위해서는 yt-dlp를 우선 시도하는 게 나을 수도 있음.
-            # 그러나 yt-dlp는 느림.
-            # 절충안: oEmbed 실패 시에만 yt-dlp 사용하거나, 
-            # AI 분석 요청 시에는 별도로 yt-dlp를 호출하는 함수를 만드는 게 나을 수도.
-            # 일단 기존 로직 유지하되, description 추가.
-            
-            return title, thumbnail, video_type, description
+            return title, thumbnail, video_type, description, channel_name
     except Exception as oembed_error:
         print(f"⚠️ oEmbed failed: {oembed_error}")
 
@@ -64,6 +54,7 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
             title = info.get('title', 'Unknown Title')
             thumbnail = info.get('thumbnail')
             description = info.get('description', '')
+            channel_name = info.get('uploader') or info.get('channel') or info.get('uploader_id')
             
             # 롱폼/숏폼 자동 분류
             if '/shorts/' in url:
@@ -71,7 +62,7 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
             else:
                 video_type = 'long'
             
-            return title, thumbnail, video_type, description
+            return title, thumbnail, video_type, description, channel_name
     
     except Exception as e:
         print(f"❌ YouTube metadata extraction failed with yt-dlp: {e}")
@@ -101,6 +92,8 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                 
                 title = "YouTube Video"
                 description = ""
+                channel_name = "Unknown Channel"
+                
                 if response.status_code == 200:
                     matches = re.findall(r'<title>(.*?)</title>', response.text)
                     if matches:
@@ -110,18 +103,23 @@ def extract_youtube_metadata(url: str) -> Tuple[Optional[str], Optional[str], st
                     desc_matches = re.findall(r'<meta name="description" content="(.*?)">', response.text)
                     if desc_matches:
                         description = desc_matches[0]
+                        
+                    # Try to extract channel name (basic regex, might fail)
+                    channel_matches = re.findall(r'"ownerChannelName":"(.*?)"', response.text)
+                    if channel_matches:
+                        channel_name = channel_matches[0]
                 
                 video_type = 'short' if '/shorts/' in url else 'long'
                 
                 print(f"✅ Manual extraction successful: {title}")
-                return title, thumbnail, video_type, description
+                return title, thumbnail, video_type, description, channel_name
                 
         except Exception as fallback_error:
             print(f"❌ Fallback extraction also failed: {fallback_error}")
 
         # Final Fallback
         video_type = 'short' if '/shorts/' in url else 'long'
-        return "YouTube Video", None, video_type, ""
+        return "YouTube Video", None, video_type, "", "Unknown Channel"
 
 
 def extract_frames(url: str, count: int = 4) -> List[str]:
@@ -322,3 +320,21 @@ def update_view_counts_batch(video_ids: List[str]) -> dict:
             print(f"❌ Failed to fetch view counts: {e}")
             
     return results
+
+
+def download_image_as_base64(url: str) -> Optional[str]:
+    """
+    URL에서 이미지를 다운로드하여 Base64 문자열로 반환
+    """
+    if not url:
+        return None
+    
+    try:
+        import requests
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            return f"data:image/jpeg;base64,{base64.b64encode(response.content).decode('utf-8')}"
+    except Exception as e:
+        print(f"❌ Failed to download image from {url}: {e}")
+    
+    return None

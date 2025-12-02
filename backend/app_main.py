@@ -571,18 +571,6 @@ def create_post(
                 detail="Post with this URL already exists"
             )
         
-        # 1. YouTube 메타데이터 추출 (제목, 썸네일, 영상 타입, 설명)
-        try:
-            from youtube_service import extract_youtube_metadata
-            title, thumbnail, video_type, _ = extract_youtube_metadata(url_str)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube metadata: {str(e)}")
-
-        # Normalize title to NFC
-        import unicodedata
-        if title:
-            title = unicodedata.normalize('NFC', title)
-        
         # 게시물 생성
         new_post = DBPost(
             url=url_str,
@@ -649,13 +637,34 @@ def analyze_video_category(
 ):
     """
     AI를 사용하여 비디오 URL을 분석하고 적절한 카테고리를 추천합니다.
+    (텍스트 + 시각 정보 활용)
     """
     # 1. YouTube 메타데이터 추출
     try:
-        from youtube_service import extract_youtube_metadata
-        title, _, _, description = extract_youtube_metadata(url)
+        from youtube_service import extract_youtube_metadata, extract_frames, download_image_as_base64
+        title, thumbnail_url, _, description, channel_name = extract_youtube_metadata(url)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube metadata: {str(e)}")
+        
+    # 1.5 시각 정보 추출 (썸네일 + 프레임)
+    images_data = []
+    try:
+        print("🖼️ Extracting visual data for AI analysis...")
+        # 썸네일 다운로드
+        if thumbnail_url:
+            thumb_b64 = download_image_as_base64(thumbnail_url)
+            if thumb_b64:
+                images_data.append(thumb_b64)
+        
+        # 프레임 추출 (3장 정도만 추출하여 속도 최적화)
+        frames = extract_frames(url, count=3)
+        if frames:
+            images_data.extend(frames)
+            
+        print(f"✅ Visual data ready: {len(images_data)} images")
+    except Exception as e:
+        print(f"⚠️ Failed to extract visual data: {e}")
+        # 시각 정보 실패해도 텍스트 분석은 계속 진행
         
     # 2. 전체 카테고리 목록 조회
     categories = db.query(Category).all()
@@ -666,11 +675,20 @@ def analyze_video_category(
         "mood": [{"id": c.id, "name": c.name} for c in categories if c.type == "mood"],
         "editing": [{"id": c.id, "name": c.name} for c in categories if c.type == "editing"],
     }
+    print(f"DEBUG: Fetched {len(categories)} categories from DB.")
+    print(f"DEBUG: Structure sizes -> Industry: {len(categories_structure['industry'])}, Genre: {len(categories_structure['genre'])}")
     
     # 3. Gemini AI 분석 요청
     try:
         from ai_service import analyze_video_with_gemini
-        recommended_categories = analyze_video_with_gemini(title, description, categories_structure)
+        # channel_name 및 images_data 추가 전달
+        recommended_categories = analyze_video_with_gemini(
+            title, 
+            description, 
+            categories_structure, 
+            channel_name, 
+            images_data
+        )
         return recommended_categories
     except Exception as e:
         # 429 Error (Too Many Requests) 처리

@@ -1,0 +1,8 @@
+DEBUG: Fetched 62 categories from DB.
+DEBUG: Structure sizes -> Industry: 15, Genre: 28
+Sample Industry Categories:
+ - FNB (ID: 9bf77ec1-2521-48e8-928f-c2387abfd510)
+ - 가전/가구/인테리어 (ID: 8ebaa4ce-cfb6-4aca-a689-ddead3c38232)
+ - 쇼핑/유통 (ID: e563869f-5ac2-4bbf-8270-3876516bb883)
+ - IT/서비스/자동차 (ID: 0f4f0e24-9258-40b5-b460-af3e0266cfaa)
+ - 기업/사회공헌 (ID: 81055674-4dca-4cbf-915a-e699b6925852)

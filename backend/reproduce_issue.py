@@ -1,85 +1,81 @@
-import requests
-import json
 
-BASE_URL = "http://localhost:8000"
+import os
+import sys
+from dotenv import load_dotenv
 
-def reproduce():
-    # 1. Login to get token
-    print("🔑 Logging in...")
-    login_resp = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "email": "bae@socialmc.co.ke",
-        "employee_id": "TH251110"
-    })
-    
-    if login_resp.status_code != 200:
-        print(f"❌ Login failed: {login_resp.text}")
-        return
+# Add backend directory to sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-    token = login_resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-    print("✅ Login successful")
+load_dotenv()
 
-    # 2. Get Categories
-    print("📂 Fetching categories...")
-    cat_resp = requests.get(f"{BASE_URL}/api/categories", headers=headers)
-    if cat_resp.status_code != 200:
-        print(f"❌ Failed to fetch categories: {cat_resp.text}")
-        return
-    
-    data = cat_resp.json()
-    print(f"Type of response: {type(data)}")
-    # print(json.dumps(data, indent=2)) # Debug output
+from youtube_service import extract_youtube_metadata, extract_frames, download_image_as_base64
+from ai_service import analyze_video_with_gemini
 
-    if isinstance(data, dict):
-        # Maybe it returns {primary: [], secondary: []}
-        primary = data.get("primary", [])
-        secondary = data.get("secondary", [])
-        # If list of objects inside
-        if primary and isinstance(primary[0], dict):
-            primary = [c["id"] for c in primary]
-        if secondary and isinstance(secondary[0], dict):
-            secondary = [c["id"] for c in secondary]
-    elif isinstance(data, list):
-        primary = [c["id"] for c in data if c["type"] == "primary"]
-        secondary = [c["id"] for c in data if c["type"] == "secondary"]
-    else:
-        print("❌ Unknown response format")
-        return
-    
-    if not primary or not secondary:
-        print("❌ Not enough categories to test")
-        print(f"Primary: {primary}")
-        print(f"Secondary: {secondary}")
-        return
+# Sample URL (a popular video likely to work)
+TEST_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
 
-    print(f"✅ Found {len(primary)} primary and {len(secondary)} secondary categories")
-
-    # 3. Try to create post
-    print("📝 Creating post...")
-    url = "https://www.youtube.com/watch?v=crHHvBDi698"
+def test_analysis():
+    # Force UTF-8 for stdout
+    if sys.stdout.encoding != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8')
+        
+    print(f"Testing analysis for: {TEST_URL}")
     
     try:
-        resp = requests.post(
-            f"{BASE_URL}/api/posts",
-            headers=headers,
-            json={
-                "url": url,
-                "primary_categories": [primary[0]],
-                "secondary_categories": [secondary[0]],
-                "memo": "Test memo"
-            },
-            timeout=60 # Set timeout to 60s
-        )
+        # 1. Metadata
+        print("1️⃣ Extracting metadata...")
+        title, thumbnail_url, _, description, channel_name = extract_youtube_metadata(TEST_URL)
+        print(f"   Title: {title}")
+        print(f"   Thumbnail: {thumbnail_url}")
         
-        if resp.status_code == 200:
-            print("✅ Post created successfully")
-            print(resp.json())
-        else:
-            print(f"❌ Post creation failed: {resp.status_code}")
-            print(resp.text)
+        # 2. Visual Data
+        print("2️⃣ Extracting visual data...")
+        images_data = []
+        if thumbnail_url:
+            thumb_b64 = download_image_as_base64(thumbnail_url)
+            if thumb_b64:
+                images_data.append(thumb_b64)
+                print("   ✅ Thumbnail downloaded")
+        
+        frames = extract_frames(TEST_URL, count=1) # Just 1 frame for speed
+        if frames:
+            images_data.extend(frames)
+            print(f"   ✅ {len(frames)} frames extracted")
             
+        # 3. AI Analysis
+        print("3️⃣ Calling Gemini...")
+        
+        # Fetch real categories from DB
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from db_models import Category
+        
+        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+        engine = create_engine(DATABASE_URL)
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
+        
+        categories = db.query(Category).all()
+        print(f"   Fetched {len(categories)} categories from DB")
+        
+        categories_structure = {
+            "industry": [{"id": c.id, "name": c.name} for c in categories if c.type == "industry"],
+            "genre": [{"id": c.id, "name": c.name} for c in categories if c.type == "genre"],
+            "cast": [{"id": c.id, "name": c.name} for c in categories if c.type == "cast"],
+            "mood": [{"id": c.id, "name": c.name} for c in categories if c.type == "mood"],
+            "editing": [{"id": c.id, "name": c.name} for c in categories if c.type == "editing"],
+        }
+        db.close()
+        
+        result = analyze_video_with_gemini(
+            title, description, categories_structure, channel_name, images_data
+        )
+        print("✅ Analysis Result:", result)
+
     except Exception as e:
-        print(f"❌ Request failed: {e}")
+        print("\n❌ ERROR CAUGHT:")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
-    reproduce()
+    test_analysis()
