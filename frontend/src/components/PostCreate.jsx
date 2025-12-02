@@ -51,14 +51,22 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
         try {
             const token = localStorage.getItem('token');
+
+            // 3분 타임아웃 설정
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 180000); // 180초 (3분)
+
             const response = await fetch(`${API_URL}/api/ai/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ url })
+                body: JSON.stringify({ url }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             const data = await response.json();
 
@@ -79,7 +87,11 @@ export default function PostCreate({ onClose, onPostCreated }) {
             alert('추천완료!');
 
         } catch (err) {
-            setError(err.message);
+            if (err.name === 'AbortError') {
+                setError('AI 분석 시간이 초과되었습니다. (서버 응답 없음)');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setAnalyzing(false);
         }
@@ -182,6 +194,12 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 {analyzing ? 'AI 분석 중...' : '✨ AI 추천'}
                             </button>
                         </div>
+                        {analyzing && (
+                            <div style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>⏳</span>
+                                <span>AI 분석에는 약 1~2분이 소요됩니다. 잠시만 기다려주세요. (영상 길이에 따라 다를 수 있습니다)</span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

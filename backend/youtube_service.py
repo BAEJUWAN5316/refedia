@@ -165,7 +165,10 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
                 'youtube': {
                     'player_client': ['android', 'web'],
                 }
-            }
+            },
+            'socket_timeout': 15,
+            'retries': 0,  # 재시도 금지
+            'fragment_retries': 0,
         }
         
         print(f"🎬 Downloading video from {url} to {temp_video_path}...")

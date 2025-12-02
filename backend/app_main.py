@@ -695,7 +695,8 @@ def analyze_video_category(
         if "429" in str(e):
             raise HTTPException(status_code=429, detail="AI service is currently busy. Please try again later.")
         print(f"AI Analysis Error: {e}")
-        raise HTTPException(status_code=500, detail="AI analysis failed")
+        # 디버깅을 위해 에러 메시지 상세 출력
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 
 @app.get("/api/posts", response_model=List[PostResponse])
