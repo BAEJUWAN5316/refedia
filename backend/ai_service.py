@@ -127,8 +127,11 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
             sys.stderr.write(f"🔍 Raw Gemini Result: {json.dumps(result, ensure_ascii=False)}\n")
             
             # Save raw result to file for debugging
-            with open("last_gemini_response.json", "w", encoding="utf-8") as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+            try:
+                with open("last_gemini_response.json", "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
                 
             sys.stderr.write(f"🔍 Result Keys: {list(result.keys())}\n")
         except json.JSONDecodeError:
@@ -190,8 +193,11 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
                             final_result[key].append(name_to_id[target_name])
                             log_msg = f"✅ Matched (Exact): {target_name} -> {name_to_id[target_name]}"
                             sys.stderr.write(log_msg + "\n")
-                            with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
-                                f.write(log_msg + "\n")
+                            try:
+                                with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
+                                    f.write(log_msg + "\n")
+                            except Exception:
+                                pass
                                 
                         # 2. Try Normalized Match
                         elif target_name.lower().strip() in normalized_name_to_id:
@@ -199,14 +205,20 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
                             final_result[key].append(matched_id)
                             log_msg = f"✅ Matched (Normalized): {target_name} -> {matched_id}"
                             sys.stderr.write(log_msg + "\n")
-                            with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
-                                f.write(log_msg + "\n")
+                            try:
+                                with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
+                                    f.write(log_msg + "\n")
+                            except Exception:
+                                pass
                                 
                         else:
                             log_msg = f"❌ Unmatched category item: '{target_name}' (Normalized: '{target_name.lower().strip()}')"
                             sys.stderr.write(log_msg + "\n")
-                            with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
-                                f.write(log_msg + "\n")
+                            try:
+                                with open("debug_ai_matching.log", "a", encoding="utf-8") as f:
+                                    f.write(log_msg + "\n")
+                            except Exception:
+                                pass
                         
         sys.stderr.write(f"🏁 Final Result: {json.dumps(final_result, ensure_ascii=False)}\n")
         return final_result
