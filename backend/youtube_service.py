@@ -171,8 +171,17 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             'fragment_retries': 0,
         }
         
-        print(f"🎬 Downloading video from {url} to {temp_video_path}...")
+        print(f"🎬 Checking video duration for {url}...")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            duration = info.get('duration', 0)
+            
+            # 5분(300초) 이상이면 프레임 추출 스킵 (시간 절약)
+            if duration > 300:
+                print(f"⚠️ Video is too long ({duration}s). Skipping frame extraction to save time.")
+                return []
+                
+            print(f"🎬 Downloading video from {url} to {temp_video_path}...")
             ydl.download([url])
         
         # 파일 확인
