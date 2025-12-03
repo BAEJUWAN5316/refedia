@@ -197,7 +197,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                         {analyzing && (
                             <div style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span>⏳</span>
-                                <span>AI 분석에는 약 1~2분이 소요됩니다. 잠시만 기다려주세요. (영상 길이에 따라 다를 수 있습니다)</span>
+                                <span>AI 분석에는 약 1~2분이 소요됩니다. 잠시만 기다려주세요. (영상 길이에 따라 다를 수 있으며 가끔 실패할 수 있습니다...)</span>
                             </div>
                         )}
                     </div>

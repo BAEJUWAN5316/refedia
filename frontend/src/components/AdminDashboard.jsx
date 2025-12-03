@@ -107,9 +107,13 @@ export default function AdminDashboard({ onClose, categories, onCategoriesChange
             if (response.ok) {
                 setNewCategory('');
                 onCategoriesChanged();
+            } else {
+                const data = await response.json();
+                alert(`Failed to add category: ${data.detail || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Failed to add category:', error);
+            alert('Error adding category. See console for details.');
         }
     };
 

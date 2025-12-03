@@ -134,7 +134,7 @@ export default function CategoryFilter({
                 </div>
             </div>
 
-            {renderCategoryGroup("업1종 (Industry)", categories.industry, selectedIndustry, onSelectIndustry)}
+            {renderCategoryGroup("업종 (Industry)", categories.industry, selectedIndustry, onSelectIndustry)}
             {renderCategoryGroup("장르 (Genre)", categories.genre, selectedGenre, onSelectGenre)}
             {renderCategoryGroup("출연자 (Cast)", categories.cast, selectedCast, onSelectCast)}
             {renderCategoryGroup("분위기 (Mood)", categories.mood, selectedMood, onSelectMood)}
