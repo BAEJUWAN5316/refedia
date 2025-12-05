@@ -574,23 +574,27 @@ def create_post(
         # YouTube 메타데이터 추출
         try:
             from youtube_service import extract_youtube_metadata
-            title, thumbnail, video_type, _, _ = extract_youtube_metadata(url_str)
+            title, thumbnail, video_type, _, channel_name = extract_youtube_metadata(url_str)
             if not title:
                 title = "Unknown Title"
             if not thumbnail:
                 thumbnail = ""
             if not video_type:
                 video_type = "long"
+            if not channel_name:
+                channel_name = "Unknown Channel"
         except Exception as e:
             print(f"⚠️ Metadata extraction failed: {e}")
             title = "Unknown Title"
             thumbnail = ""
             video_type = "long"
+            channel_name = "Unknown Channel"
         
         # 게시물 생성
         new_post = DBPost(
             url=url_str,
             title=title,
+            channel_name=channel_name,
             thumbnail=thumbnail,
             platform="youtube",
             video_type=video_type,
@@ -771,7 +775,9 @@ def get_posts(
                 DBPost.title.ilike(search_pattern_nfc),
                 DBPost.title.ilike(search_pattern_nfd),
                 DBPost.memo.ilike(search_pattern_nfc),
-                DBPost.memo.ilike(search_pattern_nfd)
+                DBPost.memo.ilike(search_pattern_nfd),
+                DBPost.channel_name.ilike(search_pattern_nfc), # 채널명 검색 추가
+                DBPost.channel_name.ilike(search_pattern_nfd)
             )
         )
     

@@ -92,6 +92,7 @@ class PostResponse(BaseModel):
     id: int
     url: str
     title: str
+    channel_name: Optional[str] = None
     thumbnail: Optional[str] = None
     platform: str
     video_type: str

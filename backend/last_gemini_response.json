@@ -7,18 +7,18 @@
   ],
   "genre": [
     {
-      "id": "79749774-a185-4d05-bc37-9ec7251f0d3c",
-      "name": "토크쇼"
+      "id": "3f964ae9-c6cb-424c-a44d-072b3abd8631",
+      "name": "예능"
     }
   ],
   "cast": [
     {
-      "id": "35f9edc7-693f-4ba4-bca2-127313ef27ad",
-      "name": "방송인"
+      "id": "6a4cae62-dd15-4d16-967a-08411bce0f3e",
+      "name": "인플루언서"
     },
     {
-      "id": "d320a16c-48b6-4f7f-a3c4-007fb84f5392",
-      "name": "없음"
+      "id": "5387af4d-a52b-4279-bf96-9ed3d05d473f",
+      "name": "일반인"
     }
   ],
   "mood": [

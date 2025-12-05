@@ -45,6 +45,8 @@ class Post(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    channel_name = Column(String)  # 채널명 추가 (검색용)
 
     author = relationship("User", back_populates="posts")
     view_count = Column(Integer, default=0)
