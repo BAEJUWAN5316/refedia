@@ -125,6 +125,16 @@ def check_and_migrate_db():
                     except Exception as e2:
                          print(f"⚠️ Failed to add {col_name}: {e2}")
 
+        # 6. Add channel_name column
+        if 'channel_name' not in columns:
+            print("🔄 Migrating: Adding channel_name column...")
+            try:
+                conn.execute(text("ALTER TABLE posts ADD COLUMN channel_name VARCHAR"))
+                conn.commit()
+                print("✅ Added channel_name column")
+            except Exception as e:
+                print(f"⚠️ Failed to add channel_name column: {e}")
+
         # 6. Check Favorites table for 'id' column
         if 'favorites' in inspector.get_table_names():
             fav_columns = [col['name'] for col in inspector.get_columns('favorites')]
