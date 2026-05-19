@@ -12,8 +12,8 @@ if API_KEY:
 genai.configure(api_key=API_KEY)
 
 try:
-    print("Testing gemini-2.0-flash-lite-001...")
-    model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
+    print("Testing gemini-2.0-flash...")
+    model = genai.GenerativeModel('gemini-2.0-flash')
     response = model.generate_content("Hello")
     print("Response received:")
     print(response.text)

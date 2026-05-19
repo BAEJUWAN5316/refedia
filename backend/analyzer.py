@@ -167,8 +167,8 @@ def analyze_video_category(video_data):
                 print(f"⚠️ Failed to process an image: {e}")
 
     try:
-        # 모델: gemini-2.0-flash-lite-001 사용 (안정성 및 속도 고려)
-        model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
+        # 모델: gemini-2.0-flash 사용 (안정성 및 속도 고려)
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         response = model.generate_content(contents)
         
