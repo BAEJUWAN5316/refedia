@@ -8,7 +8,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # 2. URL이 없는 경우 (방어 코드)
 if not DATABASE_URL:
-    print("⚠️ DATABASE_URL 환경 변수가 없습니다. SQLite로 대체합니다.")
+    print("DATABASE_URL 환경 변수가 없습니다. SQLite로 대체합니다.")
     DATABASE_URL = "sqlite:///./test.db"
 
 # 3. URL 공백 제거 및 형식 수정 (postgres:// -> postgresql://)
@@ -18,7 +18,7 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # 4. 엔진 생성
-print(f"✅ DB 연결 시도: {DATABASE_URL[:10]}...")  # 로그 확인용 (앞부분만 출력)
+print(f"DB 연결 시도: {DATABASE_URL[:10]}...")  # 로그 확인용 (앞부분만 출력)
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
