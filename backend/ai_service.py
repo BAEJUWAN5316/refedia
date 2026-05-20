@@ -107,8 +107,8 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
         print(f"⚠️ Error creating category mapping: {e}")
 
     try:
-        # 모델: gemini-2.0-flash-lite-001 사용
-        model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
+        # 모델: gemini-flash-latest 사용 (이전 모델은 무료 할당량 초과 오류 발생)
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         sys.stderr.write(f"🚀 Sending request to Gemini with {len(contents)} content items...\n")
         # 30초 타임아웃 설정
