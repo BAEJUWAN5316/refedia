@@ -110,9 +110,8 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
         # 모델: gemini-flash-latest 사용 (이전 모델은 무료 할당량 초과 오류 발생)
         model = genai.GenerativeModel('gemini-flash-latest')
         
-        sys.stderr.write(f"🚀 Sending request to Gemini with {len(contents)} content items...\n")
-        # 30초 타임아웃 설정
-        response = model.generate_content(contents, request_options={'timeout': 30})
+        # 120초 타임아웃 설정 (비전 분석 오버헤드 감안)
+        response = model.generate_content(contents, request_options={'timeout': 120})
         sys.stderr.write("✅ Gemini response received\n")
         
         # 응답 텍스트 정제

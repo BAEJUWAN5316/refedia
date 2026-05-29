@@ -207,12 +207,12 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
             ret, frame = cap.read()
             
             if ret:
-                # 프레임을 PNG로 인코딩 (고화질 유지)
-                _, buffer = cv2.imencode('.png', frame)
+                # 프레임을 JPEG로 인코딩 (용량 크게 단축)
+                _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
                 
                 # Base64 인코딩
                 frame_base64 = base64.b64encode(buffer).decode('utf-8')
-                frames_base64.append(f"data:image/png;base64,{frame_base64}")
+                frames_base64.append(f"data:image/jpeg;base64,{frame_base64}")
                 
                 print(f"✅ Extracted frame at position {pos}")
         
