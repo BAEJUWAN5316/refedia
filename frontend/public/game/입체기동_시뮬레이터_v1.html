@@ -958,9 +958,11 @@ scene.add(charGroup);
 function makeRope(){
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6),3));
-  const line=new THREE.Line(geo, new THREE.LineBasicMaterial({color:0x2c2c2c}));
-  line.frustumCulled=false; line.visible=false; scene.add(line);
-  const tip=new THREE.Mesh(new THREE.SphereGeometry(.13,6,6), new THREE.MeshBasicMaterial({color:0x444}));
+  const line=new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xfff1d0, transparent:true, opacity:.95}));
+  line.frustumCulled=false; line.visible=false; line.renderOrder=4; scene.add(line);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),
+    new THREE.MeshBasicMaterial({color:0xffc24a}));
+  tip.renderOrder=4;
   tip.visible=false; scene.add(tip);
   return {attached:false, anchor:new THREE.Vector3(), len:0, line, tip};
 }
@@ -2965,10 +2967,10 @@ const camlabel=document.getElementById('camlabel');
 const crosshair=document.getElementById('crosshair');
 
 /* 포인터 잠금: 입력 즉시 반영(지연 0) · 폴백 모드: 가벼운 보간으로 튐 방지 */
-let tYaw=player.yaw, tPitch=player.pitch;
+let tYaw=player.yaw, tPitch=player.pitch, lockSkip=0, lookAccX=0, lookAccY=0, satFrames=0;
 function rotateView(dx,dy,sens,instant){
-  dx=Math.max(-90,Math.min(90,dx));
-  dy=Math.max(-90,Math.min(90,dy));
+  dx=Math.max(-240,Math.min(240,dx));
+  dy=Math.max(-240,Math.min(240,dy));
   tYaw  -= dx*sens;
   tPitch -= dy*sens;
   tPitch = Math.max(-1.45, Math.min(1.45, tPitch));
@@ -3001,16 +3003,52 @@ overlay.addEventListener('click', startGame);
 document.addEventListener('pointerlockerror', enableFallback);
 document.addEventListener('pointerlockchange', ()=>{
   plActive = document.pointerLockElement===canvas;
-  if(plActive){ started=true; fallbackLook=false; overlay.classList.add('hidden'); }
+  if(plActive){ started=true; fallbackLook=false; overlay.classList.add('hidden'); lockSkip=3; }
   else if(!fallbackLook && started && !gameOver){ overlay.classList.remove('hidden'); }
 });
-document.addEventListener('mousemove', e=>{
-  if(plActive) rotateView(e.movementX, e.movementY, .0023, true);
+function handleLockMove(e){
+  if(lockSkip>0){ lockSkip--; return; }
+  /* 프레임당 1개로 합쳐지기 전의 원본 샘플들을 직접 받는다 — 샘플 하나하나는 작아야 정상 */
+  let samples=null;
+  if(e.getCoalescedEvents){ const cs=e.getCoalescedEvents(); if(cs && cs.length) samples=cs; }
+  if(!samples) samples=[e];
+  for(const ce of samples){
+    let mx=ce.movementX||0, my=ce.movementY||0;
+    /* 원본 샘플 하나가 비정상적으로 크면 = Chrome 스파이크 → 그 샘플만 폐기(빠른 움직임은 작은 샘플 다수라 통과) */
+    if(Math.abs(mx)>140 || Math.abs(my)>140) continue;
+    lookAccX+=mx; lookAccY+=my;
+  }
+}
+document.addEventListener('pointermove', e=>{
+  if(plActive){ if(e.pointerType==='mouse'||!e.pointerType) handleLockMove(e); }
   else if(fallbackLook && started){
-    if(lastX!==null) rotateView(e.clientX-lastX, e.clientY-lastY, .0026, false);
+    if(lastX!==null){
+      let cdx=e.clientX-lastX, cdy=e.clientY-lastY;
+      if(Math.abs(cdx)<400 && Math.abs(cdy)<400) rotateView(cdx, cdy, .0026, false);
+    }
     lastX=e.clientX; lastY=e.clientY;
   }
+}, {passive:true});
+/* 일부 환경에서 pointermove가 movement를 안 주는 경우 대비한 mousemove 폴백 */
+document.addEventListener('mousemove', e=>{
+  if(plActive && !('getCoalescedEvents' in PointerEvent.prototype)){
+    if(lockSkip>0){ lockSkip--; return; }
+    let mx=e.movementX||0, my=e.movementY||0;
+    if(Math.abs(mx)>300 || Math.abs(my)>300) return;
+    lookAccX+=mx; lookAccY+=my;
+  }
 });
+/* 매 프레임 누적된 마우스 이동을 한도 내에서 한 번에 적용 (버스트 스핀 방지 + 멈춤 없음) */
+function applyLook(){
+  if(!plActive) return;
+  let ax=lookAccX, ay=lookAccY; lookAccX=0; lookAccY=0;
+  if(!ax && !ay) return;
+  /* 한 프레임 최대 이동 클램프만 — 차단(멈춤)은 없다. 튐은 상한으로 완화 */
+  const CAP=130;
+  const mag=Math.hypot(ax,ay);
+  if(mag>CAP){ const k=CAP/mag; ax*=k; ay*=k; }
+  rotateView(ax, ay, .0023, true);
+}
 document.addEventListener('mouseout', e=>{ if(!e.relatedTarget){ lastX=null; lastY=null; } });
 document.addEventListener('keydown', e=>{
   keys[e.code]=true;
@@ -3746,6 +3784,7 @@ function loop(){
   let dt=rdt*timeScale;                                /* 세계(물리·거인) 시간 */
   if(hitStopT>0){ hitStopT-=rdt; dt*=.04; }            /* 히트스톱: 찰나의 정지 */
 
+  applyLook();
   smoothView(rdt);
   autoTune(rdt);
   if(started && !loop.introShown){
