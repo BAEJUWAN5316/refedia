@@ -1316,6 +1316,21 @@ async def download_image(url: str = Query(...)):
         )
 
 # ========================================
+# Game Web Routing
+# ========================================
+
+@app.get("/game1")
+async def get_game1():
+    """Serve the 3D maneuver simulator game HTML file directly at /game1."""
+    game_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "game", "입체기동_시뮬레이터_v1.html")
+    if os.path.exists(game_file):
+        return FileResponse(game_file)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Game file '입체기동_시뮬레이터_v1.html' not found"
+    )
+
+# ========================================
 # Static File Serving (SPA Support)
 # ========================================
 
