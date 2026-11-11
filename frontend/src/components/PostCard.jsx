@@ -56,14 +56,6 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                     <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'} video-type-badge`}>
                         {post.video_type === 'long' ? 'Long' : 'Short'}
                     </span>
-                    <button
-                        aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 저장'}
-                        className={`favorite-btn ${isFavorited ? 'active' : ''}`}
-                        onClick={handleFavorite}
-                        style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 10, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}
-                    >
-                        {isFavorited ? '⭐' : '☆'}
-                    </button>
                 </div>
 
                 <div className="post-content">
@@ -108,7 +100,18 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                     </div>
 
                     <div className="post-footer">
-                        <span className="post-author">{post.author_name || 'Unknown'}</span>
+                        <div className="post-author-group">
+                            <button
+                                type="button"
+                                aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 저장'}
+                                aria-pressed={!!isFavorited}
+                                className={`favorite-btn card-footer-favorite ${isFavorited ? 'active' : ''}`}
+                                onClick={handleFavorite}
+                            >
+                                {isFavorited ? '★' : '☆'}
+                            </button>
+                            <span className="post-author">{post.author_name || 'Unknown'}</span>
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                             <span className="post-views">{post.view_count?.toLocaleString() || 0}</span>
                             <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>

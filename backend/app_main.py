@@ -694,6 +694,9 @@ def analyze_video_category(
     try:
         from youtube_service import extract_youtube_metadata, extract_frames, download_image_as_base64
         title, thumbnail_url, _, description, channel_name = extract_youtube_metadata(url)
+        if not description:
+            from youtube_service import extract_youtube_description
+            description = extract_youtube_description(url)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube metadata: {str(e)}")
         

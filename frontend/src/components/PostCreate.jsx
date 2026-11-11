@@ -90,7 +90,17 @@ export default function PostCreate({ onClose, onPostCreated }) {
             if (data.mood) setMoodCats(data.mood);
             if (data.editing) setEditingCats(data.editing);
 
-            setNotice('카테고리를 추천했습니다. 확인 후 저장해주세요.');
+            const suggestedMemo = typeof data.memo === 'string' ? data.memo.trim() : '';
+            if (suggestedMemo) {
+                setMemo(current => {
+                    const existing = new Set(current.split('\n').map(line => line.trim()));
+                    const additions = suggestedMemo.split('\n').filter(line => !existing.has(line.trim()));
+                    return additions.length ? [current, additions.join('\n')].filter(Boolean).join('\n') : current;
+                });
+            }
+            setNotice(suggestedMemo
+                ? '카테고리와 메모를 추천했습니다. 내용을 확인 후 저장해주세요.'
+                : '카테고리를 추천했습니다. 메모에 추가할 브랜드·출연자·촬영장소는 확인되지 않았습니다.');
 
         } catch (err) {
             if (err.name === 'AbortError') {

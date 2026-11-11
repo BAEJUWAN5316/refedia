@@ -288,6 +288,30 @@ def validate_youtube_url(url: str) -> bool:
     return youtube_video_id(url) is not None
 
 
+def extract_youtube_description(url: str) -> str:
+    """Fetch the published description without downloading the video."""
+    import json
+    import re
+    import requests
+    video_id = youtube_video_id(url)
+    if not video_id:
+        return ''
+    try:
+        response = requests.get(
+            f'https://www.youtube.com/watch?v={video_id}',
+            headers={'User-Agent': 'Mozilla/5.0'}, timeout=(3, 8),
+        )
+        response.raise_for_status()
+        match = re.search(r'(?:var\s+)?ytInitialPlayerResponse\s*=\s*', response.text)
+        if match:
+            data, _ = json.JSONDecoder().raw_decode(response.text[match.end():])
+            description = data.get('videoDetails', {}).get('shortDescription', '')
+            return description[:15000] if isinstance(description, str) else ''
+    except (requests.RequestException, ValueError, TypeError):
+        pass
+    return ''
+
+
 def extract_frame_at(url: str, seconds: float) -> bytes:
     """Decode one actual frame, never substitute a thumbnail."""
     import subprocess

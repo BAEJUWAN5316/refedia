@@ -656,6 +656,10 @@ textarea.input-field {
   }
 }
 /* Reference library layout refinements */
+.post-author-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.post-author-group .post-author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-footer-favorite { width: 32px; height: 32px; flex-shrink: 0; border-radius: 6px; }
+.card-footer-favorite:hover { background: var(--bg-tertiary); transform: none; }
 h1 { background: none; -webkit-text-fill-color: currentColor; color: var(--text-primary); }
 .btn { border-radius: 6px; box-shadow: none; font-weight: 500; }
 .btn-primary { background: var(--accent-primary); }

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, Mock
-from ai_service import normalize_recommendations, analyze_video_with_gemini
-from youtube_service import validate_youtube_url, extract_frame_at
+from ai_service import normalize_recommendations, analyze_video_with_gemini, build_reference_memo
+from youtube_service import validate_youtube_url, extract_frame_at, extract_youtube_description
 
 
 class ReferenceFeaturesTest(unittest.TestCase):
@@ -33,7 +33,7 @@ class ReferenceFeaturesTest(unittest.TestCase):
         categories = {'industry': [{'id': 'i1', 'name': 'Brand'}],
                       'genre': [{'id': 'g1', 'name': 'Film'}]}
         self.assertEqual(analyze_video_with_gemini('Title', '', categories),
-                         {'industry': ['i1'], 'genre': ['g1']})
+                         {'industry': ['i1'], 'genre': ['g1'], 'memo': ''})
         self.assertEqual(post.call_args.kwargs['json']['generationConfig']['responseMimeType'], 'application/json')
 
     @patch('ai_service.requests.post')
@@ -43,6 +43,34 @@ class ReferenceFeaturesTest(unittest.TestCase):
         post.return_value.json.return_value = {'candidates': []}
         with self.assertRaises(ValueError):
             analyze_video_with_gemini('Title', '', {})
+
+    def test_memo_requires_verbatim_name_and_source_evidence(self):
+        result = {'entities': {
+            'brands': [{'name': 'Acme', 'source': 'title', 'evidence': 'Acme campaign'}],
+            'cast': [{'name': 'Kim', 'source': 'description', 'evidence': 'Starring Kim'},
+                     {'name': 'Invented', 'source': 'description', 'evidence': 'Starring Invented'}],
+            'locations': [{'name': 'Paris', 'source': 'thumbnail', 'evidence': 'Paris'}],
+        }}
+        memo = build_reference_memo(result, 'Acme campaign', 'Starring Kim')
+        self.assertIn('Acme', memo)
+        self.assertIn('Kim', memo)
+        self.assertNotIn('Invented', memo)
+        self.assertNotIn('Paris', memo)
+        self.assertEqual(len(memo.splitlines()), 2)
+
+    def test_missing_or_malformed_entities_leave_memo_empty(self):
+        for entities in [None, [], {'cast': 'name'}, {'brands': [None, {'name': 123}]}]:
+            self.assertEqual(build_reference_memo({'entities': entities}, '', ''), '')
+
+    @patch('requests.get')
+    def test_description_reads_only_published_player_metadata(self, get):
+        get.return_value.text = 'var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"Starring Kim"}}; next();'
+        self.assertEqual(extract_youtube_description('https://youtu.be/dQw4w9WgXcQ'), 'Starring Kim')
+
+    @patch('requests.get')
+    def test_description_unavailable_is_optional(self, get):
+        get.return_value.text = '<html>Consent required</html>'
+        self.assertEqual(extract_youtube_description('https://youtu.be/dQw4w9WgXcQ'), '')
 
     @patch('imageio_ffmpeg.get_ffmpeg_exe', return_value='ffmpeg')
     @patch('subprocess.run')
