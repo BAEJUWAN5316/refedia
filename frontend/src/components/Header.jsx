@@ -42,12 +42,12 @@ export default function Header({
 
                                 {currentUser.is_admin && (
                                     <button className="btn btn-secondary" onClick={onAdminClick} title="Admin Dashboard">
-                                        ⚙️ Admin
+                                        Admin
                                     </button>
                                 )}
 
                                 <div className="user-info">
-                                    <span className="user-name">👤 {currentUser.name}</span>
+                                    <span className="user-name">{currentUser.name}</span>
                                     <button className="btn btn-sm btn-secondary" onClick={onLogoutClick}>
                                         Logout
                                     </button>

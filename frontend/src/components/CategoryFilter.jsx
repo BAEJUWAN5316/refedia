@@ -45,6 +45,8 @@ export default function CategoryFilter({
     );
 
     return (
+        <details className="category-panel">
+        <summary>카테고리 및 필터 <span>펼치기 / 접기</span></summary>
         <div className="filter-section" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
             {/* Logic Toggle & Video Type */}
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
@@ -59,13 +61,13 @@ export default function CategoryFilter({
                         className={`btn ${selectedVideoType === 'long' ? 'btn-primary' : 'btn-secondary'}`}
                         onClick={() => onSelectVideoType('long')}
                     >
-                        📺 Long Form
+                        Long form
                     </button>
                     <button
                         className={`btn ${selectedVideoType === 'short' ? 'btn-primary' : 'btn-secondary'}`}
                         onClick={() => onSelectVideoType('short')}
                     >
-                        📱 Short Form
+                        Short form
                     </button>
                 </div>
 
@@ -89,7 +91,7 @@ export default function CategoryFilter({
                         style={{ marginLeft: '0.5rem' }}
                         title="Shuffle Posts"
                     >
-                        🔀 Mix
+                        Mix
                     </button>
                     <button
                         className="btn btn-sm btn-secondary"
@@ -97,7 +99,7 @@ export default function CategoryFilter({
                         style={{ marginLeft: '0.5rem' }}
                         title="Sort by Date"
                     >
-                        🕒 Latest
+                        Latest
                     </button>
                 </div>
             </div>
@@ -140,5 +142,6 @@ export default function CategoryFilter({
             {renderCategoryGroup("분위기 (Mood)", categories.mood, selectedMood, onSelectMood)}
             {renderCategoryGroup("편집/효과 (Editing)", categories.editing, selectedEditing, onSelectEditing)}
         </div>
+        </details>
     );
 }

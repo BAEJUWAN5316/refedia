@@ -446,6 +446,23 @@ def delete_category(category_id: str, current_user: User = Depends(get_current_a
 # YouTube API
 # ========================================
 
+@app.get("/api/youtube/frame")
+def get_youtube_frame(
+    url: str,
+    seconds: float = Query(0, ge=0, le=86400),
+    current_user: User = Depends(get_current_approved_user),
+):
+    import math
+    if not validate_youtube_url(url) or not math.isfinite(seconds):
+        raise HTTPException(status_code=400, detail="Invalid video URL or timestamp")
+    try:
+        from youtube_service import extract_frame_at
+        image = extract_frame_at(url, seconds)
+        return Response(content=image, media_type="image/png", headers={"Cache-Control": "no-store"})
+    except Exception:
+        raise HTTPException(status_code=502, detail="영상의 프레임을 추출할 수 없습니다. 영상 접근 상태를 확인해주세요.")
+
+
 @app.get("/api/youtube/frames")
 @limiter.limit("10/minute")  # YouTube API 과도한 호출 방지
 def get_youtube_frames(
@@ -669,6 +686,10 @@ def analyze_video_category(
     AI를 사용하여 비디오 URL을 분석하고 적절한 카테고리를 추천합니다.
     (텍스트 + 시각 정보 활용)
     """
+    if not validate_youtube_url(url):
+        raise HTTPException(status_code=400, detail="올바른 YouTube 주소를 입력해주세요.")
+    if not os.getenv("GEMINI_API_KEY"):
+        raise HTTPException(status_code=503, detail="서버에 GEMINI_API_KEY가 설정되어 있지 않습니다.")
     # 1. YouTube 메타데이터 추출
     try:
         from youtube_service import extract_youtube_metadata, extract_frames, download_image_as_base64
@@ -687,9 +708,7 @@ def analyze_video_category(
                 images_data.append(thumb_b64)
         
         # 프레임 추출 (3장 정도만 추출하여 속도 최적화)
-        frames = extract_frames(url, count=3)
-        if frames:
-            images_data.extend(frames)
+        # Keep recommendations responsive: title, channel and thumbnail are sufficient.
             
         print(f"✅ Visual data ready: {len(images_data)} images")
     except Exception as e:
@@ -719,6 +738,8 @@ def analyze_video_category(
             channel_name, 
             images_data
         )
+        if not recommended_categories.get("industry") or not recommended_categories.get("genre"):
+            raise ValueError("유효한 카테고리 추천을 받지 못했습니다. 다시 시도해주세요.")
         return recommended_categories
     except Exception as e:
         # 429 Error (Too Many Requests) 처리

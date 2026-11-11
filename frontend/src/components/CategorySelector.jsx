@@ -1,4 +1,6 @@
-export default function CategorySelector({ categories, selected, onChange, type }) {
+export default function CategorySelector({ categories, selected, onChange, type, collapsible = true }) {
+    const Container = collapsible ? 'details' : 'div';
+    const Label = collapsible ? 'summary' : 'p';
     // type: 'industry', 'genre', 'cast', 'mood', 'editing'
     const categoryList = categories[type] || [];
 
@@ -22,10 +24,10 @@ export default function CategorySelector({ categories, selected, onChange, type 
     };
 
     return (
-        <div className="input-group">
-            <label className="input-label">
-                {getLabel()}
-            </label>
+        <Container className="category-selector" open={collapsible && selected.length > 0 ? true : undefined}>
+            <Label className="input-label">
+                {selected.length ? `${selected.length}개 선택됨` : getLabel()}
+            </Label>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {categoryList.map((cat) => (
                     <label
@@ -47,12 +49,12 @@ export default function CategorySelector({ categories, selected, onChange, type 
                             type="checkbox"
                             checked={selected.includes(cat.id)}
                             onChange={() => toggleCategory(cat.id)}
-                            style={{ display: 'none' }}
+                            style={{ width: '14px', height: '14px', accentColor: 'var(--accent-primary)' }}
                         />
                         {cat.name}
                     </label>
                 ))}
             </div>
-        </div>
+        </Container>
     );
 }

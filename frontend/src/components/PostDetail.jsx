@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import YouTubePlayer from './YouTubePlayer';
 import CategorySelector from './CategorySelector';
 import { API_URL } from '../config';
 
@@ -75,27 +76,6 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
         const list = categories[type] || [];
         const cat = list.find(c => c.id === id);
         return cat ? cat.name : id;
-    };
-
-    const getYouTubeEmbedUrl = (url) => {
-        if (!url) return '';
-        let videoId = '';
-
-        // Handle various YouTube URL formats
-        const patterns = [
-            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([^#&?]*)/,
-            /^([^#&?]*)$/ // Fallback if it's just the ID
-        ];
-
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                videoId = match[1];
-                break;
-            }
-        }
-
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0`;
     };
 
     const handleUpdate = async () => {
@@ -266,7 +246,7 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
     if (error) return <div className="text-center text-danger">{error}</div>;
     if (!post) return null;
 
-    const embedUrl = getYouTubeEmbedUrl(post.url);
+
 
     const content = (
         <div className={isModal ? "modal" : "container"} style={isModal ? { maxWidth: '1000px', width: '90%', height: '90vh', display: 'flex', flexDirection: 'column', padding: '0' } : { maxWidth: '1000px', margin: '2rem auto', padding: '0', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }} onClick={e => e.stopPropagation()}>
@@ -352,13 +332,7 @@ export default function PostDetail({ postId: propPostId, currentUser, onClose, o
 
                     {/* 1. Playable YouTube Screen */}
                     <div style={{ width: '100%' }}>
-                        <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-                            <iframe
-                                src={embedUrl}
-                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                allowFullScreen
-                            />
-                        </div>
+                        <YouTubePlayer url={post.url} />
                     </div>
 
                     {/* 2. Thumbnail & 3. URL */}

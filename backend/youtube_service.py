@@ -266,14 +266,56 @@ def extract_frames(url: str, count: int = 4) -> List[str]:
                 print(f"⚠️ Failed to delete temp file: {e}")
 
 
+def youtube_video_id(url: str) -> Optional[str]:
+    from urllib.parse import urlparse, parse_qs
+    import re
+    parsed = urlparse(url)
+    host = (parsed.hostname or '').lower()
+    if parsed.scheme not in ('http', 'https'):
+        return None
+    if host == 'youtu.be':
+        candidate = parsed.path.strip('/').split('/')[0]
+    elif host in ('youtube.com', 'www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com'):
+        parts = parsed.path.strip('/').split('/')
+        candidate = parse_qs(parsed.query).get('v', [''])[0] if parsed.path == '/watch' else (
+            parts[1] if len(parts) == 2 and parts[0] in ('shorts', 'embed', 'live') else '')
+    else:
+        return None
+    return candidate if re.fullmatch(r'[A-Za-z0-9_-]{11}', candidate) else None
+
+
 def validate_youtube_url(url: str) -> bool:
-    """YouTube URL 유효성 검사"""
-    valid_patterns = [
-        'youtube.com/watch',
-        'youtu.be/',
-        'youtube.com/shorts/'
-    ]
-    return any(pattern in url for pattern in valid_patterns)
+    return youtube_video_id(url) is not None
+
+
+def extract_frame_at(url: str, seconds: float) -> bytes:
+    """Decode one actual frame, never substitute a thumbnail."""
+    import subprocess
+    import imageio_ffmpeg
+    video_id = youtube_video_id(url)
+    if not video_id:
+        raise ValueError('Invalid YouTube URL')
+    options = {
+        'format': 'best[height<=720][ext=mp4]/best[height<=720]/best',
+        'quiet': True, 'noplaylist': True, 'socket_timeout': 10,
+        'retries': 0, 'fragment_retries': 0,
+    }
+    with yt_dlp.YoutubeDL(options) as downloader:
+        info = downloader.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
+    if not info or not info.get('url'):
+        raise ValueError('Video stream unavailable')
+    duration = info.get('duration')
+    if duration:
+        seconds = min(seconds, max(0, duration - 0.1))
+    result = subprocess.run([
+        imageio_ffmpeg.get_ffmpeg_exe(), '-nostdin', '-loglevel', 'error',
+        '-ss', str(seconds), '-i', info['url'], '-frames:v', '1',
+        '-vf', 'scale=1280:-2:force_original_aspect_ratio=decrease',
+        '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1',
+    ], capture_output=True, timeout=35, check=True)
+    if not result.stdout:
+        raise ValueError('No frame returned')
+    return result.stdout
 
 
 def update_view_counts_batch(video_ids: List[str]) -> dict:

@@ -36,6 +36,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
     };
 
     const [analyzing, setAnalyzing] = useState(false);
+    const [notice, setNotice] = useState('');
 
     const handleAIAnalyze = async () => {
         if (!url) return;
@@ -48,13 +49,15 @@ export default function PostCreate({ onClose, onPostCreated }) {
 
         setAnalyzing(true);
         setError('');
+        setNotice('');
+        let timeoutId;
 
         try {
             const token = localStorage.getItem('token');
 
             // 3분 타임아웃 설정
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 180000); // 180초 (3분)
+            timeoutId = setTimeout(() => controller.abort(), 120000);
 
             const response = await fetch(`${API_URL}/api/ai/analyze`, {
                 method: 'POST',
@@ -78,13 +81,16 @@ export default function PostCreate({ onClose, onPostCreated }) {
             }
 
             // Apply recommended categories
+            if (!data.industry?.length || !data.genre?.length) {
+                throw new Error('추천 결과가 충분하지 않습니다. 다시 시도하거나 직접 선택해주세요.');
+            }
             if (data.industry) setIndustryCats(data.industry);
             if (data.genre) setGenreCats(data.genre);
             if (data.cast) setCastCats(data.cast);
             if (data.mood) setMoodCats(data.mood);
             if (data.editing) setEditingCats(data.editing);
 
-            alert('추천완료!');
+            setNotice('카테고리를 추천했습니다. 확인 후 저장해주세요.');
 
         } catch (err) {
             if (err.name === 'AbortError') {
@@ -93,6 +99,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                 setError(err.message);
             }
         } finally {
+            clearTimeout(timeoutId);
             setAnalyzing(false);
         }
     };
@@ -165,6 +172,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                 </div>
 
                 <div className="modal-body" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {notice && <p role="status">{notice}</p>}
                     {error && (
                         <div style={{ padding: '0.75rem', background: '#d32f2f', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>
                             {error}
@@ -183,6 +191,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 onChange={(e) => setUrl(e.target.value)}
                                 placeholder="https://www.youtube.com/watch?v=..."
                                 autoFocus
+                                disabled={analyzing || loading}
                                 style={{ padding: '0.75rem', fontSize: '1rem', width: '100%', flex: 1 }}
                             />
                             <button
@@ -191,13 +200,13 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 disabled={analyzing || !url}
                                 style={{ whiteSpace: 'nowrap', minWidth: '120px' }}
                             >
-                                {analyzing ? 'AI 분석 중...' : '✨ AI 추천'}
+                                {analyzing ? '분석 중…' : '카테고리 추천'}
                             </button>
                         </div>
                         {analyzing && (
                             <div style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span>⏳</span>
-                                <span>AI 분석에는 약 1~2분이 소요됩니다. 잠시만 기다려주세요. (영상 길이에 따라 다를 수 있으며 가끔 실패할 수 있습니다...)</span>
+                                <span>영상 정보를 확인하고 있습니다. 잠시만 기다려주세요.</span>
                             </div>
                         )}
                     </div>
@@ -208,6 +217,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 업종 (Industry) <span style={{ color: 'red' }}>*</span>
                             </label>
                             <CategorySelector
+                                collapsible={false}
                                 categories={categories}
                                 type="industry"
                                 selected={industryCats}
@@ -220,6 +230,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 장르 (Genre) <span style={{ color: 'red' }}>*</span>
                             </label>
                             <CategorySelector
+                                collapsible={false}
                                 categories={categories}
                                 type="genre"
                                 selected={genreCats}
@@ -232,6 +243,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 출연자 (Cast)
                             </label>
                             <CategorySelector
+                                collapsible={false}
                                 categories={categories}
                                 type="cast"
                                 selected={castCats}
@@ -244,6 +256,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 분위기 (Mood)
                             </label>
                             <CategorySelector
+                                collapsible={false}
                                 categories={categories}
                                 type="mood"
                                 selected={moodCats}
@@ -256,6 +269,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 편집/효과 (Editing)
                             </label>
                             <CategorySelector
+                                collapsible={false}
                                 categories={categories}
                                 type="editing"
                                 selected={editingCats}

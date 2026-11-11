@@ -1,8 +1,10 @@
 import React, { forwardRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
+import YouTubePlayer from './YouTubePlayer';
 
 const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
+    const [hovered, setHovered] = useState(false);
     const [isFavorited, setIsFavorited] = useState(post.is_favorited);
 
     const handleFavorite = async (e) => {
@@ -42,8 +44,9 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
             }}
             style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
         >
-            <div className="post-card" ref={ref}>
+            <div className="post-card" ref={ref} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
                 <div className="thumbnail-container">
+                    {hovered && <YouTubePlayer url={post.url} preview />}
                     <img
                         src={post.thumbnail}
                         alt={post.title}
@@ -51,9 +54,10 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                         loading="lazy"
                     />
                     <span className={`badge ${post.video_type === 'long' ? 'badge-long' : 'badge-short'} video-type-badge`}>
-                        {post.video_type === 'long' ? '📺 Long' : '📱 Short'}
+                        {post.video_type === 'long' ? 'Long' : 'Short'}
                     </span>
                     <button
+                        aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 저장'}
                         className={`favorite-btn ${isFavorited ? 'active' : ''}`}
                         onClick={handleFavorite}
                         style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 10, background: 'rgba(0,0,0,0.5)', borderRadius: '50%' }}
@@ -104,9 +108,9 @@ const PostCard = forwardRef(({ post, onClick, getCategoryName }, ref) => {
                     </div>
 
                     <div className="post-footer">
-                        <span className="post-author">👤 {post.author_name || 'Unknown'}</span>
+                        <span className="post-author">{post.author_name || 'Unknown'}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <span className="post-views">👁️ {post.view_count?.toLocaleString() || 0}</span>
+                            <span className="post-views">{post.view_count?.toLocaleString() || 0}</span>
                             <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>
                         </div>
                     </div>
