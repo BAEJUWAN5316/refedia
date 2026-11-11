@@ -210,7 +210,7 @@ export default function PostCreate({ onClose, onPostCreated }) {
                                 disabled={analyzing || !url}
                                 style={{ whiteSpace: 'nowrap', minWidth: '120px' }}
                             >
-                                {analyzing ? '분석 중…' : '카테고리 추천'}
+                                {analyzing ? '분석 중…' : 'AI 카테고리 추천'}
                             </button>
                         </div>
                         {analyzing && (

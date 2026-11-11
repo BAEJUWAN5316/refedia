@@ -47,8 +47,8 @@ class ReferenceFeaturesTest(unittest.TestCase):
     def test_memo_requires_verbatim_name_and_source_evidence(self):
         result = {'entities': {
             'brands': [{'name': 'Acme', 'source': 'title', 'evidence': 'Acme campaign'}],
-            'cast': [{'name': 'Kim', 'source': 'description', 'evidence': 'Starring Kim'},
-                     {'name': 'Invented', 'source': 'description', 'evidence': 'Starring Invented'}],
+            'cast': [{'name': 'Kim', 'source': 'description', 'evidence': 'Starring Kim', 'is_individual': True},
+                     {'name': 'Invented', 'source': 'description', 'evidence': 'Starring Invented', 'is_individual': True}],
             'locations': [{'name': 'Paris', 'source': 'thumbnail', 'evidence': 'Paris'}],
         }}
         memo = build_reference_memo(result, 'Acme campaign', 'Starring Kim')
@@ -57,6 +57,27 @@ class ReferenceFeaturesTest(unittest.TestCase):
         self.assertNotIn('Invented', memo)
         self.assertNotIn('Paris', memo)
         self.assertEqual(len(memo.splitlines()), 2)
+
+    def test_cast_uses_full_individual_names_not_title_pair_nickname(self):
+        title = '범지윤의 SCREENX 관람'
+        description = '영포티 곽범과 나름 MZ 엄지윤의 트렌드 체험기'
+        result = {'entities': {'cast': [
+            {'name': '범지윤', 'source': 'title', 'evidence': title, 'is_individual': True},
+            {'name': '범', 'source': 'description', 'evidence': description, 'is_individual': True},
+            {'name': '곽범', 'source': 'description', 'evidence': description, 'is_individual': True},
+            {'name': '엄지윤', 'source': 'description', 'evidence': description, 'is_individual': True},
+            {'name': '곽범과 나름 MZ 엄지윤', 'source': 'description', 'evidence': description, 'is_individual': False},
+        ]}}
+        self.assertEqual(build_reference_memo(result, title, description), '출연자: 곽범, 엄지윤')
+
+    def test_host_stage_name_is_valid_with_description_evidence(self):
+        description = '재테크 꿈나무 요조와 함께 책으로 시작하는 재테크 스터디\n곽상준 추천, 정재형을 위한 책'
+        result = {'entities': {'cast': [
+            {'name': '요조', 'source': 'description', 'evidence': '재테크 꿈나무 요조와 함께', 'is_individual': True},
+            {'name': '곽상준', 'source': 'description', 'evidence': '곽상준 추천', 'is_individual': True},
+            {'name': '정재형', 'source': 'description', 'evidence': '정재형을 위한 책', 'is_individual': True},
+        ]}}
+        self.assertEqual(build_reference_memo(result, '책으로보장', description), '출연자: 요조, 곽상준, 정재형')
 
     def test_missing_or_malformed_entities_leave_memo_empty(self):
         for entities in [None, [], {'cast': 'name'}, {'brands': [None, {'name': 123}]}]:

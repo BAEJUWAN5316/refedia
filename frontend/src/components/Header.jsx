@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import SearchBar from './SearchBar';
 import refediaLogo from '../../assets/refedia.png';
 
@@ -13,6 +14,13 @@ export default function Header({
     onViewModeChange,
     onLogoClick
 }) {
+    const [presentation, setPresentation] = useState(() => document.documentElement.dataset.presentation || 'studio');
+    const togglePresentation = () => {
+        const next = presentation === 'studio' ? 'classic' : 'studio';
+        document.documentElement.dataset.presentation = next;
+        setPresentation(next);
+        try { localStorage.setItem('refedia-presentation', next); } catch { /* Session-only preference */ }
+    };
     return (
         <header className="header">
             <div className="container header-content">
@@ -33,6 +41,10 @@ export default function Header({
                 )}
 
                 <div className="actions-section">
+                    <button type="button" className="presentation-toggle" onClick={togglePresentation}
+                        title="화면 스타일 비교" aria-label={presentation === 'studio' ? '기존 화면으로 전환' : '새 화면으로 전환'}>
+                        {presentation === 'studio' ? '기존 화면 보기' : '새 화면 보기'}
+                    </button>
                     {currentUser ? (
                         <div className="user-menu-wrapper">
                             <div className="user-menu-top">

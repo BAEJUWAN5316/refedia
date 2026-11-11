@@ -1,6 +1,7 @@
 """Gemini recommendations with type-scoped category validation."""
 import os
 import json
+import re
 import requests
 from dotenv import load_dotenv
 
@@ -49,6 +50,17 @@ def build_reference_memo(result, title, description):
             if not isinstance(name, str) or not isinstance(evidence, str):
                 continue
             name, evidence = name.strip(), evidence.strip()
+            if kind == 'cast':
+                # A title's duo nickname is not proof of an individual identity.
+                if item.get('is_individual') is not True:
+                    continue
+                if description and item.get('source') != 'description':
+                    continue
+                # Reject partial names cut out of a longer name or combined token.
+                pattern = (r'(?<![\w])' + re.escape(name)
+                           + r'(?=$|[^\w]|(?:과|와|이|가|은|는|을|를|의|님|씨)(?=$|[^\w]))')
+                if not re.search(pattern, evidence):
+                    continue
             if (name and len(name) <= 100 and '\n' not in name and evidence
                     and evidence in source and name in evidence and name not in names):
                 names.append(name)
@@ -69,6 +81,23 @@ def analyze_video_with_gemini(video_title, video_description, categories_structu
         "Also return entities: {brands: [], cast: [], locations: []}. Each entity must be "
         "an object {name, source, evidence}, where source is title or description and evidence "
         "is an exact quotation containing the exact name from that source. "
+        "For cast, also include is_individual: true for a verified individual person's public name. "
+        "A public name can be a legal name OR a stage name, pen name, mononym or established "
+        "individual nickname explicitly used in the description. Do NOT require a surname or legal identity. "
+        "Read the entire description FIRST and collect ALL named on-screen participants, including "
+        "the host, MC, moderator, presenter, interviewer, panelists, guests and performers. "
+        "Hosts are cast even if they do not act and even if guests get more prominence. "
+        "Phrases such as '[name]와 함께', '[name]가 진행', 'MC [name]' can establish participation "
+        "when the surrounding text describes this episode. Review every introductory sentence "
+        "for missed hosts before returning the cast list. "
+        "Titles frequently contain invented duo names, portmanteaus, pair nicknames or show names; "
+        "NEVER treat those as an individual person. Resolve shorthand only when the description "
+        "explicitly spells out each person's public name, and return each individual separately. "
+        "If a description is supplied, cast evidence MUST come from it, not the title. "
+        "Keep original spelling and do not replace a stage name with a guessed legal name. "
+        "Never combine or complete names yourself. If both a nickname and a full public name are "
+        "explicitly linked to the same person, emit the full public name only once. "
+        "Exclude event-prize brands and incidental mentions from advertised brands. "
         "Extract only explicitly identified advertised brands, actual performers and filming locations. "
         "A mentioned person is not necessarily a performer; a mentioned place is not necessarily "
         "a filming location. Ignore sponsors' addresses, crew, hashtags without context, and incidental mentions. "
